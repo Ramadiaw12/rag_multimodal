@@ -7,5 +7,6 @@ requires-python = ">=3.12"
 dependencies = [
     "ipynb>=0.5.1",
     "open-clip-torch>=3.3.0",
+    "pymupdf>=2.0",
     "torch>=2.15.0",
 ]
