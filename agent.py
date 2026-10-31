@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 import json, os
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, ToolMessage
@@ -15,8 +18,7 @@ SYSTEM_PROMPT = """Tu es un analyste documentaire. Outils : rechercher_sources, 
 
 
 def build_llm():
-    # GROQ_API_KEY est lue dans l'environnement. Modèle avec tool calling fiable.
-    return ChatGroq(model=os.getenv("AGENT_MODEL", "llama-3.3-70b-versatile"), temperature=0)
+    return ChatGroq(model=os.getenv("AGENT_MODEL", "openai/gpt-oss-120b"), temperature=0)
 
 
 def local_tools():
@@ -31,7 +33,8 @@ def local_tools():
 
     @tool
     def repondre_question(question: str, k: int = 6, type_resultat: str = "") -> str:
-        """Répond à UNE question précise à partir des documents (texte, graphiques, schémas)."""
+        """Répond à UNE question précise à partir des documents (texte, graphiques, schémas).
+        type_resultat : "texte", "image", ou chaîne vide pour les deux."""
         return rag_core.outil_repondre(question, k, type_resultat)
 
     return [rechercher_sources, repondre_question]
@@ -42,8 +45,6 @@ async def mcp_tools():
     from langchain_mcp_adapters.client import MultiServerMCPClient
     client = MultiServerMCPClient({"rag": {"url": MCP_URL, "transport": "streamable_http"}})
     return await client.get_tools()
-
-# build_agent, _text et run_agent : inchangés
 
 
 def build_agent(tools):

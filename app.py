@@ -21,23 +21,26 @@ def get_agent(mode: str):
 
 
 def render_sources(sources, show_ref=True):
-    textes = [s for s in sources if s["type"] == "texte"]
-    images = [s for s in sources if s["type"] == "image"]
     if not sources:
         return
+    textes = [s for s in sources if s["type"] == "texte"]
+    images = [s for s in sources if s["type"] == "image"]
     tab_t, tab_i = st.tabs([f"Extraits ({len(textes)})", f"Images ({len(images)})"])
     with tab_t:
         for s in textes:
             badge = f'<span class="badge">{s["reference"]}</span>' if show_ref else ""
             st.markdown(f'<div class="passage"><div class="src">{badge}{html.escape(str(s["pdf"]))}, '
                         f'p.{s["page"]} ({s["similarite"]:.0%})</div>'
-                        f'{html.escape(s["contenu"][:600])}</div>', unsafe_allow_html=True)
+                        f'{html.escape((s["contenu"] or "")[:600])}</div>', unsafe_allow_html=True)
     with tab_i:
         cols = st.columns(min(len(images), 3) or 1)
         for i, s in enumerate(images):
             with cols[i % 3]:
                 ref = f'{s["reference"]} : ' if show_ref else ""
-                st.image(s["source"], caption=f'{ref}{s["pdf"]}, p.{s["page"]} ({s["similarite"]:.0%})')
+                try:
+                    st.image(s["source"], caption=f'{ref}{s["pdf"]}, p.{s["page"]} ({s["similarite"]:.0%})')
+                except Exception:
+                    st.caption(f'Image introuvable : {s["source"]}')
 
 
 with st.sidebar:
@@ -45,7 +48,7 @@ with st.sidebar:
     k = st.slider("Nombre de sources (k)", 1, 15, 6)
     type_res = {"Texte et images": None, "Texte seul": "texte", "Images seules": "image"}[
         st.selectbox("Type de résultats", ["Texte et images", "Texte seul", "Images seules"])]
-    max_images = st.slider("Images envoyées au modèle", 0, 6, 3)
+    max_images = st.slider("Images envoyées au modèle", 0, 5, 3)
     upload = st.file_uploader("Image comme requête (mode direct)", type=["png", "jpg", "jpeg"])
     if st.button("Nouvelle conversation"):
         st.session_state.msgs = []
@@ -74,7 +77,7 @@ if prompt := st.chat_input("Votre question"):
             if mode == "direct":
                 from rag_core import repondre
                 image_requete = None
-                if upload:  # adaptez : chemin ou objet PIL selon ce qu'attend rechercher()
+                if upload:  # adaptez si rechercher(image=...) attend un autre format qu'un chemin
                     image_requete = str(Path(tempfile.gettempdir()) / upload.name)
                     Path(image_requete).write_bytes(upload.getvalue())
                 with st.spinner("Recherche et génération…"):
