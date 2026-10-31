@@ -15,6 +15,7 @@ dependencies = [
     "mcp[cli]>=1.30.0",
     "numpy==1.26.4",
     "open-clip-torch>=3.3.0",
+    "openai>=3.42.0",
     "pillow>=13.0.0",
     "pymupdf>=2.0",
     "python-dotenv>=1.2.4",
