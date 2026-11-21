@@ -245,25 +245,76 @@ The number of retrieved results is configurable through the `k` parameter.
 
 ## Architecture conceptuelle de l'agent
 
+
+## 🧠 Agentic AI Architecture
+
 ```mermaid
-flowchart TD
-    START([Start])
-    MIND["Mind"]
-    BODY["Body<br/>Tools: rechercher_sources, analyser_image"]
-    END([End])
+flowchart TB
+    %% =========================
+    %% USER INTERACTION
+    %% =========================
+    USER(["👤 User Query"])
 
-    START --> MIND
-    BODY --> MIND
-    MIND -.-> END
-    MIND -. Tools .-> BODY
+    %% =========================
+    %% AGENT CORE
+    %% =========================
+    subgraph AGENT["🤖 AGENT CORE"]
+        direction TB
 
-    classDef default fill:#f2f0ff,stroke:#8b7cf6,color:#333
-    classDef first fill:#ffffff,stroke:#8b7cf6,color:#333
-    classDef last fill:#bfb6fc,stroke:#8b7cf6,color:#333
+        MIND["🧠 MIND<br/><b>Reasoning & Decision Making</b><br/>Understand • Plan • Decide"]
 
-    class START first
-    class END last
+        BODY["⚙️ BODY<br/><b>Tool Execution Layer</b><br/>Search • Retrieve • Analyze"]
+
+        MIND <-->|"Tool Calling / Results"| BODY
+    end
+
+    %% =========================
+    %% AVAILABLE TOOLS
+    %% =========================
+    subgraph TOOLS["🛠️ AVAILABLE TOOLS"]
+        direction LR
+
+        SEARCH["🔎 Source Retrieval<br/><small>rechercher_sources</small>"]
+
+        IMAGE["🖼️ Image Analysis<br/><small>analyser_image</small>"]
+    end
+
+    %% =========================
+    %% OUTPUT
+    %% =========================
+    RESPONSE(["💬 Final Response<br/>Contextual Answer + Sources"])
+
+    %% =========================
+    %% CONNECTIONS
+    %% =========================
+    USER -->|"Input"| MIND
+    BODY --> SEARCH
+    BODY --> IMAGE
+    SEARCH -.->|"Retrieved Context"| BODY
+    IMAGE -.->|"Visual Insights"| BODY
+    MIND -->|"Validated Reasoning"| RESPONSE
+
+    %% =========================
+    %% STYLING
+    %% =========================
+    classDef user fill:#172554,stroke:#60A5FA,color:#FFFFFF,stroke-width:2px
+    classDef mind fill:#6D28D9,stroke:#C4B5FD,color:#FFFFFF,stroke-width:3px
+    classDef body fill:#312E81,stroke:#818CF8,color:#FFFFFF,stroke-width:2px
+    classDef tool fill:#164E63,stroke:#67E8F9,color:#FFFFFF,stroke-width:2px
+    classDef response fill:#14532D,stroke:#4ADE80,color:#FFFFFF,stroke-width:2px
+
+    class USER user
+    class MIND mind
+    class BODY body
+    class SEARCH,IMAGE tool
+    class RESPONSE response
+
+    style AGENT fill:#111827,stroke:#8B5CF6,stroke-width:2px,color:#FFFFFF
+    style TOOLS fill:#111827,stroke:#22D3EE,stroke-width:2px,color:#FFFFFF
 ```
+
+
+   
 
 
 ## Current Limitations
