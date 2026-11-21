@@ -11,6 +11,7 @@ from PIL import Image
 from groq import Groq
 from retrieval import rechercher, collection
 from context import filtrer_sources, compresser_passage
+from chemins import resoudre_image
 
 from retrieval import rechercher   # ex. : from mon_module import rechercher
 

@@ -1,8 +1,14 @@
 # Fichier mcp_server.py : serveur MCP pour exposer les outils RAG multimodal via HTTP
+import os
+
 from mcp.server.fastmcp import FastMCP
+
 import rag_core
 
-mcp = FastMCP("RAG multimodal", host="127.0.0.1", port=8000)
+mcp = FastMCP("RAG multimodal", host=os.getenv("MCP_HOST", "127.0.0.1"),
+              port=int(os.getenv("MCP_PORT", "8000")))
+
+
 
 # Tools exposés par le serveur MCP : ces fonctions sont accessibles via l'API MCP, pour l'agent distant ou d'autres clients MCP. Elles appellent les fonctions de rag_core pour effectuer la recherche et la génération de réponses.
 @mcp.tool()

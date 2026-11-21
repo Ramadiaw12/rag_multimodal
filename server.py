@@ -11,6 +11,7 @@ from pydantic import BaseModel
 import agent as ag
 import rag_core
 from retrieval import collection
+from chemins import resoudre_image
 
 ROOT = Path(__file__).resolve().parent
 app = FastAPI(title="RAG multimodal")
@@ -30,7 +31,7 @@ async def get_agent(mode: str):
         _agents[mode] = ag.build_agent(tools)
     return _agents[mode]
 
-
+# ici on définit une fonction publique qui prend en entrée un dictionnaire représentant une source et renvoie un dictionnaire contenant les mêmes informations, mais sans le chemin disque de l'image. Si la source est de type "image", on ajoute une clé "image_url" contenant l'URL de l'image à partir de son ID. Cette fonction est utilisée pour préparer les sources avant de les envoyer au navigateur.
 def public(source: dict) -> dict:
     """Prépare une source pour le navigateur : pas de chemin disque, une URL d'image à la place."""
     s = {k: v for k, v in source.items() if k != "source"}
@@ -42,7 +43,7 @@ def public(source: dict) -> dict:
 def sse(event: str, data: dict) -> str:
     return f"data: {json.dumps({'event': event, **data}, ensure_ascii=False, default=float)}\n\n"
 
-
+# Alors là on définit les routes FastAPI pour le serveur web. La route "/" sert la page HTML principale, la route "/api/health" renvoie le nombre de documents indexés dans la collection ChromaDB, la route "/api/image" sert les images indexées par ID, et la route "/api/chat" gère les requêtes de chat en utilisant soit le mode direct (pipeline RAG complet), soit le mode local ou MCP (agent distant). La route "/api/chat" utilise des Server-Sent Events pour envoyer les résultats au fur et à mesure qu'ils sont générés.
 @app.get("/")
 def index():
     return FileResponse(ROOT / "static" / "index.html")
