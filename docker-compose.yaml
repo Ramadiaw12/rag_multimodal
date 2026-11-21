@@ -1,0 +1,32 @@
+# Deux services issus de la même image : l'application web et le serveur MCP.
+# Données (index ChromaDB + images extraites) montées depuis ./data
+services:
+  mcp:
+    build: .
+    image: rag-multimodal
+    command: ["python", "mcp_server.py"]
+    env_file: .env
+    environment:
+      MCP_HOST: 0.0.0.0
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+
+  web:
+    build: .
+    image: rag-multimodal
+    ports:
+      - "8080:8080"
+    env_file: .env
+    environment:
+      MCP_URL: http://mcp:8000/mcp   # remplace la valeur de .env (127.0.0.1 ne marche pas entre conteneurs)
+    volumes:
+      - ./data:/data
+    depends_on:
+      - mcp
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+    restart: unless-stopped
