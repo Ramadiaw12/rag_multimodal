@@ -1,3 +1,4 @@
+# Agent qui interroge un RAG (outil de recherche documentaire) pour répondre à des questions complexes
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -9,6 +10,7 @@ from langchain_groq import ChatGroq
 
 MCP_URL = os.getenv("MCP_URL", "http://127.0.0.1:8000/mcp")
 
+
 SYSTEM_PROMPT = """Tu es un analyste documentaire. Outils : rechercher_sources, repondre_question.
 1. Question complexe ou comparative : décompose-la en sous-questions, un appel à repondre_question par sous-question.
 2. Pour vérifier ou recouper un fait : utilise rechercher_sources.
@@ -16,11 +18,11 @@ SYSTEM_PROMPT = """Tu es un analyste documentaire. Outils : rechercher_sources, 
 4. Réponse finale en français, synthétique. Les références [S1], [S2] changent à chaque appel d'outil :
    ne les reprends pas, cite les sources sous la forme (nom du pdf, p.N)."""
 
-
+# Ici on définit les outils que l'agent peut utiliser. Chaque outil est une fonction Python décorée avec @tool()
 def build_llm():
     return ChatGroq(model=os.getenv("AGENT_MODEL", "openai/gpt-oss-120b"), temperature=0)
 
-
+# definir les outils locaux (mode 1) ou distants (mode 2)
 def local_tools():
     """Mode 1 : le RAG est un tool LangChain dans le même processus."""
     import rag_core
@@ -39,24 +41,24 @@ def local_tools():
 
     return [rechercher_sources, repondre_question]
 
-
+# ALors là, on définit les outils que l'agent peut utiliser. Chaque outil est une fonction Python décorée avec @tool()
 async def mcp_tools():
     """Mode 2 : l'agent est séparé du RAG, il ne connaît que l'URL MCP (aucun import de rag_core)."""
     from langchain_mcp_adapters.client import MultiServerMCPClient
     client = MultiServerMCPClient({"rag": {"url": MCP_URL, "transport": "streamable_http"}})
     return await client.get_tools()
 
-
+# la fonction build_agent construit un agent LangChain avec le LLM et les outils fournis
 def build_agent(tools):
     return create_agent(build_llm(), tools, system_prompt=SYSTEM_PROMPT)
 
-
+# Fonction utilitaire pour extraire le texte d'un message
 def _text(content) -> str:
     if isinstance(content, str):
         return content
     return "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in content)
 
-
+# Fonction utilitaire pour exécuter l'agent sur une question, avec un historique et un callback pour chaque étape
 async def run_agent(agent, question: str, history=(), on_step=None):
     """Retourne (réponse, étapes, sources)."""
     messages = [*history, {"role": "user", "content": question}]
