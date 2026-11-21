@@ -13,6 +13,8 @@ from langchain_core.messages import SystemMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
+from langchain_core.utils.function_calling import convert_to_openai_tool
+from context import ajuster_au_budget, count_tokens
 
 # ici on définit l'URL du serveur MCP pour que l'agent distant puisse appeler les outils de recherche et d'analyse d'images. On définit également la liste des outils exposés par le serveur MCP, qui sont utilisés par l'agent pour interroger la base vectorielle et analyser les images. Le prompt système décrit le comportement attendu de l'agent, en précisant qu'il doit toujours commencer par rechercher des sources, analyser les images si nécessaire, reformuler la recherche si les résultats sont insuffisants, et rédiger une réponse finale structurée en citant les sources.
 MCP_URL = os.getenv("MCP_URL", "http://127.0.0.1:8000/mcp")
@@ -77,22 +79,23 @@ class EtatAgent(TypedDict):
 # Ici on définit la fonction build_agent qui construit un graphe ReAct pour l'agent, avec un noeud "mind" qui raisonne et décide (appeler un outil ou répondre), et un noeud "body" qui exécute les outils. 
 # Le graphe est compilé et retourné. On définit également la fonction run_agent qui exécute l'agent de manière asynchrone, en gérant les mises à jour des messages, les appels d'outils et les résultats, et retourne la réponse finale, les étapes et les sources trouvées
 def build_agent(tools):
-    """Graphe ReAct :  START → mind ⇄ body → END."""
-    llm_avec_outils = build_llm().bind_tools(tools)      # le LLM connaît les outils disponibles
+    llm_avec_outils = build_llm().bind_tools(tools)
+    # les définitions d'outils sont renvoyées à chaque appel : on les compte aussi
+    surcout = count_tokens(json.dumps([convert_to_openai_tool(t) for t in tools], ensure_ascii=False))
 
+    #ici on définit la fonction mind qui prend l'état de l'agent, ajuste les messages au budget de tokens, appelle le LLM avec les messages ajustés, et retourne la réponse finale avec les statistiques de contexte. Cette fonction est utilisée comme noeud "mind" dans le graphe ReAct pour raisonner et décider des actions à entreprendre (appeler un outil ou répondre).
     async def mind(state: EtatAgent):
-        """MIND : raisonne et décide (appeler un outil ou répondre)."""
-        reponse = await llm_avec_outils.ainvoke([SystemMessage(SYSTEM_PROMPT), *state["messages"]])
+        envoyes, stats = ajuster_au_budget(state["messages"], SYSTEM_PROMPT, surcout)
+        reponse = await llm_avec_outils.ainvoke([SystemMessage(SYSTEM_PROMPT), *envoyes])
+        reponse.response_metadata["contexte"] = stats
         return {"messages": [reponse]}
-
+    # là le graphe ReAct est construit avec un noeud "mind" qui raisonne et décide, et un noeud "body" qui exécute les outils. Le graphe est compilé et retourné. Les arêtes conditionnelles sont ajoutées pour permettre à l'agent de passer du noeud "mind" au noeud "body" lorsqu'il décide d'appeler un outil, et de revenir au noeud "mind" après l'exécution de l'outil. Le graphe est configuré pour commencer par le noeud "mind" et se terminer lorsque l'agent a fini de raisonner et de répondre.
     graphe = StateGraph(EtatAgent)
     graphe.add_node("mind", mind)
-    graphe.add_node("body", ToolNode(tools))             # BODY : exécute les outils (Action → Observation)
-
+    graphe.add_node("body", ToolNode(tools))
     graphe.add_edge(START, "mind")
     graphe.add_conditional_edges("mind", tools_condition, {"tools": "body", END: END})
-    graphe.add_edge("body", "mind")                      # l'observation retourne au cerveau
-
+    graphe.add_edge("body", "mind")
     return graphe.compile()
 
 # On définit la fonction _text qui prend un contenu (chaîne ou liste de blocs) et retourne une chaîne de texte. Si le contenu est une chaîne, il est retourné tel quel. Si c'est une liste de blocs, on concatène les champs "text" des dictionnaires ou on convertit les autres éléments en chaînes.
