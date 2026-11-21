@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAG multimodal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0f1b2d;--mut:#4a5a73;--bg:#eef1f6;--board:#e4e9f2;--card:#fff;--hl:#ffd23f;--line:#d3dae6}
+*{box-sizing:border-box}
+body{margin:0;height:100vh;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);font:15px/1.5 'Bricolage Grotesque',system-ui,sans-serif}
+header{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.7rem 1.4rem;border-bottom:1px solid var(--line)}
+.brand{font-weight:800;font-size:1.25rem;letter-spacing:-.02em}
+.brand small{font-weight:400;font-size:.8rem;color:var(--mut);margin-left:.7rem}
+.seg{display:flex;border:2px solid var(--ink);border-radius:3px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:.35rem .9rem;font:600 .85rem inherit;color:var(--ink);cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--hl)}
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)}
+#chat{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line)}
+#log{flex:1;overflow:auto;padding:1.4rem}
+#empty{max-width:34rem;margin:8vh auto 0}
+#empty h1{font-size:2.4rem;line-height:1.05;letter-spacing:-.03em;margin:0 0 .6rem}
+#empty p{font:1.15rem/1.5 Newsreader,serif;color:var(--mut);margin:0 0 1.2rem}
+.chip{display:block;width:100%;text-align:left;margin-bottom:.5rem;padding:.6rem .9rem;background:var(--card);border:1px solid var(--line);border-left:5px solid var(--hl);border-radius:2px;font:inherit;cursor:pointer}
+.chip:hover{border-left-color:var(--ink)}
+.msg{margin-bottom:1.2rem;max-width:42rem}
+.msg.user{margin-left:auto;background:var(--ink);color:#fff;padding:.6rem .9rem;border-radius:3px;width:fit-content}
+.msg.bot .txt{font:1.12rem/1.65 Newsreader,serif}
+.txt p{margin:0 0 .7rem}.txt ul{margin:0 0 .7rem;padding-left:1.2rem}
+.txt code{background:var(--board);padding:0 .25rem;border-radius:2px;font-size:.9em}
+.err{color:#b3261e}.warn{font:.85rem 'Bricolage Grotesque',sans-serif;color:var(--mut)}
+.cite{background:var(--ink);color:var(--hl);border:0;border-radius:2px;padding:0 .4rem;margin:0 .1rem;font:700 .74rem 'Bricolage Grotesque',sans-serif;cursor:pointer;vertical-align:baseline}
+.cite:hover{background:#27406b}
+#composer{display:flex;gap:.6rem;padding:.9rem 1.4rem;border-top:1px solid var(--line)}
+#q{flex:1;resize:none;max-height:9rem;padding:.6rem .8rem;border:2px solid var(--ink);border-radius:3px;background:var(--card);font:inherit;color:var(--ink)}
+#send{border:0;background:var(--ink);color:var(--hl);padding:0 1.2rem;border-radius:3px;font:700 .9rem inherit;cursor:pointer}
+#send:disabled{opacity:.5;cursor:wait}
+#board{overflow:auto;padding:1.2rem 1.4rem;background:var(--board)}
+#board h2{display:flex;justify-content:space-between;margin:0 0 .6rem;font-size:.95rem;letter-spacing:.01em}
+#board h2 span{color:var(--mut);font-weight:400}
+#trace{list-style:none;margin:0 0 1.4rem;padding:0;border-left:2px solid var(--ink)}
+#trace li{position:relative;padding:.15rem 0 .5rem 1rem;font-size:.88rem}
+#trace li::before{content:"";position:absolute;left:-6px;top:.5rem;width:10px;height:10px;background:var(--hl);border:2px solid var(--ink);border-radius:50%}
+#trace li.wait::before{animation:pulse 1s infinite}
+#trace b{font-weight:800}#trace .a{color:var(--mut)}#trace em{display:block;font-style:normal;color:var(--mut)}
+#trace .idle{color:var(--mut);padding-left:1rem}
+.ev{background:var(--card);border-left:5px solid var(--hl);padding:.6rem .9rem;margin-bottom:.7rem;border-radius:2px}
+.ev .meta{display:flex;justify-content:space-between;gap:.5rem;font-size:.78rem;color:var(--mut);margin-bottom:.25rem}
+.ev .meta b{color:var(--ink)}
+.ev .txt{font:.98rem/1.5 Newsreader,serif}
+.meter{height:3px;background:var(--line);margin-top:.5rem}.meter i{display:block;height:100%;background:var(--ink)}
+.slide{margin-bottom:.9rem}
+.slide img{display:block;width:100%;border:6px solid var(--ink);border-radius:2px;background:#fff;cursor:zoom-in}
+.slide .meta{margin-top:.3rem}
+.flash{animation:flash 1.4s}
+#lightbox{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#0f1b2dd9;padding:2rem;cursor:zoom-out}
+#lightbox.on{display:flex}#lightbox img{max-width:100%;max-height:100%;border:8px solid #fff}
+@keyframes flash{from{background:#fff0a8}to{background:#fff}}
+@keyframes pulse{50%{background:var(--ink)}}
+@media(max-width:860px){main{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) 38vh}#chat{border-right:0}.brand small{display:none}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">RAG multimodal<small id="count"></small></div>
+  <div class="seg" id="modes" role="group" aria-label="Mode">
+    <button data-mode="direct" title="Une recherche, une génération">Direct</button>
+    <button data-mode="local" title="L’agent décide, outils dans le même processus" aria-pressed="true">Agent</button>
+    <button data-mode="mcp" title="L’agent décide, outils servis par le serveur MCP">Agent via MCP</button>
+  </div>
+</header>
+<main>
+  <section id="chat">
+    <div id="log">
+      <div id="empty">
+        <h1>Interrogez vos documents.</h1>
+        <p>Le texte et les figures sont lus ensemble. Chaque réponse montre les preuves sur lesquelles elle s’appuie.</p>
+        <div id="sugg"></div>
+      </div>
+    </div>
+    <form id="composer">
+      <textarea id="q" rows="1" placeholder="Votre question (Entrée pour envoyer)"></textarea>
+      <button id="send" type="submit">Envoyer</button>
+    </form>
+  </section>
+  <aside id="board">
+    <h2>Trace de l’agent</h2>
+    <ol id="trace"><li class="idle">Les étapes apparaîtront ici.</li></ol>
+    <h2>Planche de preuves <span id="n"></span></h2>
+    <div id="evidence"></div>
+  </aside>
+</main>
+<div id="lightbox"><img alt=""></div>
+<script>
+const $ = s => document.querySelector(s);
+const SUGG = ["What is multi-head attention?", "Que montre le schéma de l’architecture ?", "Compare l’encodeur et le décodeur"];
+let mode = "local", history = [], busy = false, seen = new Map();
+
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function md(t) {
+  const out = []; let list = null;
+  for (const raw of esc(t).split("\n")) {
+    const l = raw.replace(/^#{1,4}\s*(.*)/, "<b>$1</b>").replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`(.+?)`/g, "<code>$1</code>");
+    const m = l.match(/^\s*(?:[-*•]|\d+\.)\s+(.*)/);
+    if (m) { if (!list) { list = []; out.push(list); } list.push(m[1]); }
+    else { list = null; if (l.trim()) out.push(l); }
+  }
+  return out.map(x => Array.isArray(x) ? "<ul>" + x.map(i => "<li>" + i + "</li>").join("") + "</ul>" : "<p>" + x + "</p>").join("");
+}
+
+function cites(html) {
+  return html
+    .replace(/\(([^()<>]*?\.pdf)[,;]?\s*p\.?\s*(\d+)\)/gi, (m, pdf, p) =>
+      `<button class="cite" data-pdf="${pdf.trim()}" data-p="${p}">${pdf.trim()} p.${p}</button>`)
+    .replace(/\[S(\d+)\]/g, (m, n) => `<button class="cite" data-ref="S${n}">S${n}</button>`);
+}
+
+function addMsg(role, html) {
+  const d = document.createElement("div");
+  d.className = "msg " + role;
+  d.innerHTML = role === "bot" ? `<div class="txt">${html}</div>` : html;
+  $("#log").appendChild(d); $("#log").scrollTop = 1e9;
+  return d;
+}
+
+function addSources(list) {
+  for (const s of list) {
+    if (seen.has(s.id)) continue;
+    seen.set(s.id, s);
+    const pct = Math.max(0, Math.min(100, Math.round(s.similarite * 100)));
+    const el = document.createElement("div");
+    el.dataset.pdf = s.pdf; el.dataset.p = s.page;
+    if (mode === "direct") el.dataset.ref = s.reference;
+    const meta = `<div class="meta"><b>${esc(String(s.pdf))}, p.${s.page}</b><span>${pct} %</span></div>`;
+    if (s.type === "image") {
+      el.className = "slide";
+      el.innerHTML = `<img src="${s.image_url}" alt="Figure page ${s.page}" loading="lazy">${meta}`;
+    } else {
+      el.className = "ev";
+      el.innerHTML = meta + `<div class="txt">${esc((s.contenu || "").slice(0, 500))}</div><div class="meter"><i style="width:${pct}%"></i></div>`;
+    }
+    $("#evidence").appendChild(el);
+  }
+  $("#n").textContent = seen.size + " source(s)";
+}
+
+function focusEvidence(sel) {
+  const hits = [...document.querySelectorAll("#evidence > *")].filter(sel);
+  hits.forEach(h => { h.classList.remove("flash"); void h.offsetWidth; h.classList.add("flash"); });
+  if (hits[0]) hits[0].scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function handle(ev, bot, pending, q) {
+  if (ev.event === "call") {
+    if ($("#trace .idle")) $("#trace").innerHTML = "";
+    const a = ev.args || {}, arg = a.question || a.id_image || JSON.stringify(a);
+    const li = document.createElement("li"); li.className = "wait";
+    li.innerHTML = `<b>${esc(ev.tool)}</b> <span class="a">${esc(String(arg))}</span><em>en cours…</em>`;
+    $("#trace").appendChild(li); pending.push({ tool: ev.tool, li });
+  } else if (ev.event === "result") {
+    const i = pending.findIndex(p => p.tool === ev.tool);
+    if (i >= 0) { const { li } = pending.splice(i, 1)[0]; li.classList.remove("wait"); li.querySelector("em").textContent = "→ " + (ev.summary || "ok"); }
+  } else if (ev.event === "sources") {
+    addSources(ev.sources);
+  } else if (ev.event === "answer") {
+    let html = cites(md(ev.text || ""));
+    for (const w of ev.warnings || []) html += `<p class="warn">${esc(w)}</p>`;
+    bot.querySelector(".txt").innerHTML = html;
+    history.push({ role: "user", content: q }, { role: "assistant", content: ev.text || "" });
+  } else if (ev.event === "error") {
+    bot.querySelector(".txt").innerHTML = `<p class="err">${esc(ev.message)}</p>`;
+  }
+  $("#log").scrollTop = 1e9;
+}
+
+async function ask(q) {
+  q = q.trim(); if (!q || busy) return;
+  busy = true; $("#send").disabled = true;
+  $("#empty")?.remove();
+  addMsg("user", esc(q));
+  seen.clear(); $("#evidence").innerHTML = ""; $("#n").textContent = "";
+  $("#trace").innerHTML = mode === "direct" ? `<li class="idle">Mode direct : pas d’étapes d’agent.</li>` : "";
+  const bot = addMsg("bot", "<p>…</p>"), pending = [];
+  try {
+    const r = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: q, mode, history }) });
+    if (!r.ok) throw new Error("Erreur serveur " + r.status);
+    const rd = r.body.getReader(), dec = new TextDecoder(); let buf = "";
+    for (;;) {
+      const { done, value } = await rd.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 2);
+        if (line.startsWith("data: ")) handle(JSON.parse(line.slice(6)), bot, pending, q);
+      }
+    }
+  } catch (e) { bot.querySelector(".txt").innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+  busy = false; $("#send").disabled = false; $("#q").focus();
+}
+
+SUGG.forEach(s => { const b = document.createElement("button"); b.className = "chip"; b.textContent = s; b.onclick = () => ask(s); $("#sugg").appendChild(b); });
+
+$("#modes").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  mode = b.dataset.mode;
+  document.querySelectorAll("#modes button").forEach(x => x.setAttribute("aria-pressed", x === b));
+});
+$("#composer").addEventListener("submit", e => { e.preventDefault(); const v = $("#q").value; $("#q").value = ""; $("#q").style.height = ""; ask(v); });
+$("#q").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#composer").requestSubmit(); } });
+$("#q").addEventListener("input", e => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; });
+
+$("#log").addEventListener("click", e => {
+  const c = e.target.closest(".cite"); if (!c) return;
+  if (c.dataset.ref) focusEvidence(el => el.dataset.ref === c.dataset.ref);
+  else focusEvidence(el => el.dataset.pdf === c.dataset.pdf && el.dataset.p === c.dataset.p);
+});
+$("#evidence").addEventListener("click", e => {
+  if (e.target.tagName !== "IMG") return;
+  $("#lightbox img").src = e.target.src; $("#lightbox").classList.add("on");
+});
+$("#lightbox").onclick = () => $("#lightbox").classList.remove("on");
+addEventListener("keydown", e => { if (e.key === "Escape") $("#lightbox").classList.remove("on"); });
+
+fetch("/api/health").then(r => r.json()).then(h => $("#count").textContent = h.indexed + " éléments indexés").catch(() => {});
+</script>
+</body>
+</html>
