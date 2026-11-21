@@ -1,3 +1,5 @@
+# FIchier rag_core.py : contient les fonctions de recherche et de génération de réponses pour le RAG multimodal. 
+# Ces fonctions sont utilisées par l'agent local et le serveur MCP pour exposer les fonctionnalités de recherche et de réponse aux questions.
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -143,7 +145,7 @@ def generer_reponse(question, sources, max_images=3):
     texte_reponse = reponse.choices[0].message.content or "Le modèle n'a renvoyé aucune réponse."
     return texte_reponse, sources_utilisees, avertissements
 
-
+# fonction repondre combine la récupération des sources et la génération de la réponse pour fournir un pipeline complet.
 def repondre(question, k=6, type_resultat=None, image_requete=None, max_images=3):
     """Pipeline complet : retrieval + génération. Sert à l'UI, à l'agent et à MCP."""
     _, sources = recuperer_sources(question, k, type_resultat, image_requete)
@@ -152,6 +154,7 @@ def repondre(question, k=6, type_resultat=None, image_requete=None, max_images=3
 
 
 # ---------------- OUTILS PARTAGÉS (agent local + serveur MCP) ----------------
+# Ces fonctions sont utilisées à la fois par l'agent local et par le serveur MCP pour exposer les fonctionnalités de recherche et de réponse aux questions.
 def _allege(sources, n=600):
     """Tronque les extraits et arrondit les scores pour économiser les tokens côté agent."""
     return [{**s, "contenu": (s["contenu"] or "")[:n], "similarite": round(s["similarite"], 3)}
