@@ -59,11 +59,13 @@ def filtrer_sources(sources: list[dict]) -> list[dict]:
     for s in sources:
         meilleur[s["type"]] = max(meilleur.get(s["type"], -1.0), s["similarite"])
     gardees, vus = [], set()
+    # condition, pour chaque source, de garder la source si elle dépasse le seuil absolu pour son type et si elle est dans la marge relative du meilleur score pour ce type. On dédoublonne ensuite les sources en utilisant une clé unique basée sur le PDF, la page et le contenu pour les textes, ou l'ID pour les images. Les sources gardées sont renvoyées sous forme de liste de dictionnaires.
     for s in sources:
         t = s["type"]
         seuil = max(SIM_MIN_TEXTE if t == "texte" else SIM_MIN_IMAGE, meilleur[t] - MARGE_RELATIVE)
         if s["similarite"] < seuil:
             continue
+        # on crée une clé unique pour chaque source : pour les textes, la clé est un tuple (pdf, page, début du contenu), et pour les images, c'est l'ID de l'image. Si la clé a déjà été vue, on ignore la source. Sinon, on ajoute la clé à l'ensemble des vus et on ajoute la source à la liste des gardées. On renvoie ensuite la liste des sources gardées
         cle = (s["pdf"], s["page"], (s["contenu"] or "")[:80]) if t == "texte" else s["id"]
         if cle in vus:
             continue
@@ -90,11 +92,14 @@ def compresser_passage(texte: str, requete: str, max_chars: int = MAX_CHARS_PASS
         return texte
     phrases = re.split(r"(?<=[.!?])\s+", texte)
     q = _mots(requete)
+    # on classe les phrases par nombre de mots partagés avec la requête, en commençant par la phrase qui partage le plus de mots. On parcourt ensuite les phrases dans cet ordre, en ajoutant les phrases choisies jusqu'à ce que le nombre maximal de caractères soit atteint. On renvoie ensuite le passage compressé sous forme de chaîne de caractères.
     classement = sorted(range(len(phrases)), key=lambda i: -len(q & _mots(phrases[i])))
     choisies, total = [], 0
+    # on parcourt les phrases dans l'ordre de pertinence par rapport à la requête, en ajoutant les phrases choisies jusqu'à ce que le nombre maximal de caractères soit atteint. On renvoie ensuite le passage compressé sous forme de chaîne de caractères
     for i in classement:
         if total + len(phrases[i]) > max_chars and choisies:
             continue
+        # on ajoute la phrase à la liste des phrases choisies et on met à jour le total de caractères. Si le total dépasse le nombre maximal de caractères, on arrête la boucle. On renvoie ensuite les phrases choisies dans leur ordre d'origine, jointes par des espaces, et tronquées à max_chars caractères
         choisies.append(i)
         total += len(phrases[i]) + 1
         if total >= max_chars:
@@ -128,25 +133,28 @@ def ajuster_au_budget(messages: list, systeme: str, surcout_outils: int = 0, bud
       1) résultats d'outils anciens tronqués (le plus récent reste intact),
       2) échanges d'historique supprimés, du plus ancien au plus récent,
       3) en dernier recours, résultat d'outil le plus récent tronqué."""
+    # on definit msgs comme la fenêtre de conversation des messages, on calcule le nombre de tokens de base (système + surcoût outils), et on définit une fonction total() qui calcule le nombre total de tokens dans les messages. On initialise avant, tronques et perdus pour suivre les statistiques d'ajustement. 
+    # On parcourt ensuite les résultats d'outils anciens pour les tronquer si nécessaire, puis on supprime les échanges d'historique les plus anciens, et enfin on tronque le résultat d'outil le plus récent si le budget n'est toujours pas respecté. On renvoie les messages ajustés et les statistiques.
     msgs = fenetre(messages)
     base = count_tokens(systeme) + surcout_outils
     total = lambda: base + count_messages(msgs)
     avant, tronques, perdus = total(), 0, 0
-
+    # on tronque les résultats d'outils anciens, en commençant par le plus ancien, jusqu'à ce que le budget soit respecté ou qu'il ne reste que le résultat d'outil le plus récent. On compte le nombre de résultats tronqués
     outils = [k for k, m in enumerate(msgs) if isinstance(m, ToolMessage)]
     for k in outils[:-1]:
         if total() <= budget:
             break
+        # on tronque le contenu du résultat d'outil à 300 caractères et on met à jour le message correspondant. On incrémente le compteur de résultats tronqués
         msgs[k] = msgs[k].model_copy(update={"content": _tronquer(_contenu(msgs[k]), 300)})
         tronques += 1
-
+    # on supprime les échanges d'historique les plus anciens, en conservant toujours le tour courant. On arrête dès que le budget est respecté ou qu'il ne reste plus que le tour courant. On compte le nombre d'échanges perdus
     while total() > budget:
         dernier_humain = max(k for k, m in enumerate(msgs) if isinstance(m, HumanMessage))
         if dernier_humain < 2:
             break
         msgs = msgs[2:]
         perdus += 1
-
+    # en dernier recours, on tronque le résultat d'outil le plus récent si le budget n'est toujours pas respecté. On compte le nombre de résultats tronqués
     if total() > budget and outils:
         k = max(k for k, m in enumerate(msgs) if isinstance(m, ToolMessage))
         msgs[k] = msgs[k].model_copy(update={"content": _tronquer(_contenu(msgs[k]), 1200)})
