@@ -242,6 +242,30 @@ The system supports three retrieval modes:
 
 The number of retrieved results is configurable through the `k` parameter.
 
+
+## Architecture conceptuelle de l'agent
+
+```mermaid
+flowchart TD
+    START([Start])
+    MIND["Mind"]
+    BODY["Body<br/>Tools: rechercher_sources, analyser_image"]
+    END([End])
+
+    START --> MIND
+    BODY --> MIND
+    MIND -.-> END
+    MIND -. Tools .-> BODY
+
+    classDef default fill:#f2f0ff,stroke:#8b7cf6,color:#333
+    classDef first fill:#ffffff,stroke:#8b7cf6,color:#333
+    classDef last fill:#bfb6fc,stroke:#8b7cf6,color:#333
+
+    class START first
+    class END last
+```
+
+
 ## Current Limitations
 
 - The configured GPT-OSS-120B model is used for text-based generation and agent reasoning, not direct image understanding.
@@ -270,6 +294,8 @@ This project explores several important concepts in modern AI engineering:
 - LLM integration and inference.
 - Agentic workflows and tool calling.
 - Context management and source attribution.
+
+
 
 ## Author : **RD**
 
