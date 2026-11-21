@@ -1,3 +1,4 @@
+#   FIchier pour tester les fonctions de context.py
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 import context as c
@@ -10,7 +11,7 @@ def src(id_, type_="texte", page=1, sim=0.8, contenu="un texte"):
 def texte_long(n):
     return " ".join(f"mot{i}" for i in range(n))
 
-
+# --- conversation utils
 def conv(n, reponse=lambda i: f"r{i}"):
     msgs = []
     for i in range(n):
