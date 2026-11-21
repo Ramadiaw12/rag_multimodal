@@ -1,5 +1,7 @@
 # RAG multimodal agentique : texte, schémas et graphiques
 
+![CI](https://github.com/VOTRE_COMPTE/rag-multimodal/actions/workflows/ci.ymlbadge.svg)
+
 > *Multimodal agentic RAG: a LangGraph ReAct agent queries a CLIP + ChromaDB index of text and images, reads figures with a vision model, and exposes its retriever through an MCP server.*
 
 Posez une question à un PDF et obtenez une réponse sourcée qui s'appuie **à la fois sur le texte et sur les figures** (schémas d'architecture, graphiques, tableaux). L'agent décide lui-même quand chercher, quand lire une image et quand répondre.
