@@ -1,246 +1,146 @@
-# Multimodal RAG — Intelligent PDF Assistant
+# RAG multimodal agentique : texte, schémas et graphiques
 
-An intelligent document retrieval system that combines **Retrieval-Augmented Generation (RAG)**, multimodal document indexing, and an AI agent to retrieve and explain information from PDF documents.
+> *Multimodal agentic RAG: a LangGraph ReAct agent queries a CLIP + ChromaDB index of text and images, reads figures with a vision model, and exposes its retriever through an MCP server.*
 
-The project allows users to query indexed PDF documents, retrieve relevant text passages, find associated figures, and generate contextual answers using an LLM.
+Posez une question à un PDF et obtenez une réponse sourcée qui s'appuie **à la fois sur le texte et sur les figures** (schémas d'architecture, graphiques, tableaux). L'agent décide lui-même quand chercher, quand lire une image et quand répondre.
 
-## Project Overview
+<!-- Remplacez par une capture ou un GIF de 20 s de l'interface : c'est ce que les visiteurs regardent en premier -->
+![Démo](docs/demo.gif)
 
-Traditional RAG systems mainly focus on textual information. However, technical and scientific documents often contain valuable information in figures, diagrams, charts, and illustrations.
+## Pourquoi ce projet
 
-This project explores a multimodal approach to document retrieval by handling both textual and visual content extracted from PDF documents.
+Un RAG classique ne voit que le texte : les informations contenues dans un schéma ou un graphique sont perdues. Ce projet traite les figures comme des sources de première classe, puis ajoute une couche agentique : le modèle raisonne, interroge la base, lit les images utiles et rédige lui-même la réponse.
 
-The system combines:
-- Document ingestion and processing.
-- Text and image indexing.
-- Vector-based semantic search.
-- Contextual answer generation.
-- An AI agent capable of invoking retrieval tools.
+## Ce que fait le système
 
-## Key Features
-
-### 1. PDF Processing
-- Load and process PDF documents.
-- Extract textual content.
-- Retrieve visual elements and figures.
-- Preserve document references and page metadata.
-
-### 2. Multimodal Indexing
-- Organize textual and visual document content.
-- Generate embeddings for semantic retrieval.
-- Store indexed content and metadata in ChromaDB.
-- Associate retrieved elements with their original PDF and page.
-
-### 3. Semantic Search
-- Retrieve relevant passages based on user questions.
-- Search for textual or visual results.
-- Configure the number of retrieved results (`k`).
-- Display document references and metadata.
-
-### 4. AI-Powered Answer Generation
-- Use an LLM to generate contextual responses.
-- Ground answers in retrieved document content.
-- Reduce unsupported or fabricated information.
-- Include document references in generated answers.
-
-### 5. Agentic RAG with LangChain
-The project integrates an AI agent using LangChain's `create_agent`.
-
-The agent can:
-- Understand the user's request.
-- Decide when to invoke the document retrieval tool.
-- Call `consulter_pdf` to search indexed documents.
-- Reformulate queries when retrieval results are insufficient.
-- Generate answers based on retrieved information.
-
-### 6. Visual Results
-- Retrieve indexed figures from ChromaDB.
-- Recover original image files using their metadata.
-- Display retrieved figures directly in the Jupyter Notebook.
-- Associate each image with its source PDF and page number.
+- **Index multimodal unique** : texte et images sont encodés par le même modèle CLIP (ViT-B-32) dans une collection ChromaDB persistante (distance cosinus). Une requête texte retrouve aussi bien des passages que des figures, et une image peut servir de requête.
+- **Agent ReAct sur LangGraph** : deux nœuds, `mind` (le LLM raisonne) et `body` (les outils agissent), reliés par la boucle Raisonnement, Action, Observation.
+- **Lecture des images par un modèle vision** : l'agent, modèle texte, appelle l'outil `analyser_image` pour obtenir une description fiable d'une figure avant de répondre.
+- **Retriever exposé via MCP** : le RAG tourne dans un serveur MCP séparé, et l'agent n'importe aucun code du RAG. N'importe quel client MCP peut réutiliser les mêmes outils.
+- **Interface Streamlit à trois modes** pour comparer les approches : RAG direct, agent avec outils locaux, agent via MCP. Les appels d'outils de l'agent s'affichent en direct.
 
 ## Architecture
 
-The project follows a retrieval and generation pipeline:
+```mermaid
+flowchart LR
+    Q([Question]) --> UI[Streamlit]
+    UI --> MIND
 
-```text
-                 USER QUERY
-                      |
-                      v
-             INTERACTION FUNCTION
-                      |
-                      v
-                LANGCHAIN AGENT
-                      |
-                      v
-              consulter_pdf TOOL
-                      |
-                      v
-             DOCUMENT RETRIEVAL
-                      |
-              +-------+-------+
-              |               |
-              v               v
-         TEXT SEARCH      IMAGE SEARCH
-              |               |
-              v               v
-          CHROMADB        CHROMADB
-              |               |
-              +-------+-------+
-                      |
-                      v
-              RETRIEVED SOURCES
-                      |
-                      v
-               GROQ LLM
-                      |
-                      v
-              GENERATED ANSWER
-                      |
-                      v
-          ANSWER + SOURCES + FIGURES
+    subgraph AGENT["Agent LangGraph (ReAct)"]
+        MIND["MIND<br/>LLM Groq : raisonne"] -- "action : appel d'outil" --> BODY["BODY<br/>exécute les outils"]
+        BODY -- observation --> MIND
+    end
+
+    BODY -- "mode local" --> CORE
+    BODY -- "mode MCP (HTTP)" --> MCP["Serveur MCP"] --> CORE
+
+    CORE["rag_core<br/>recherche + lecture d'image"] --> DB[("ChromaDB<br/>CLIP ViT-B-32<br/>texte + images")]
+    CORE --> VLM["Modèle vision Groq"]
+    MIND --> A([Réponse sourcée<br/>pdf, page])
 ```
 
-## Technology Stack
-
-| Technology | Role |
+| Outil de l'agent | Rôle |
 |---|---|
-| Python | Main programming language |
-| LangChain | Agent orchestration and tool calling |
-| Groq | LLM inference |
-| GPT-OSS-120B | Text generation and agent reasoning |
-| ChromaDB | Vector storage and retrieval |
-| Embedding models | Semantic representation of content |
-| PyMuPDF / PDF processing tools | PDF content extraction, depending on the ingestion implementation |
-| Pillow (PIL) | Image loading and processing |
-| Jupyter Notebook | Development and experimentation |
-| UV | Python dependency and environment management |
+| `rechercher_sources` | Interroge la base vectorielle et renvoie passages et images (id, pdf, page, contenu, similarité). |
+| `analyser_image` | Lit une image trouvée par la recherche avec le modèle vision et renvoie une observation en texte. |
 
-## Project Structure
+Le serveur MCP expose aussi `repondre_question` (pipeline RAG complet, retrieval puis génération) pour les clients qui veulent une réponse toute faite. L'agent de l'application ne l'utilise pas : c'est lui qui rédige.
 
-The project is organized around document ingestion, indexing, retrieval, and agent interaction.
+## Stack
 
-```text
-rag_multimodal/
-│
-├── .venv/
-├── .env
-├── .gitignore
-│
-├── notebooks/
-│   └── multimodal_rag.ipynb
-│
-├── documents/
-│   └── pdfs/
-│
-├── images/
-│
-├── chroma_db/
-│
-├── README.md
-└── pyproject.toml
-```
+| Couche | Technologie |
+|---|---|
+| Embeddings multimodaux | OpenCLIP `ViT-B-32` (`laion2b_s34b_b79k`) |
+| Base vectorielle | ChromaDB (persistante, cosinus) |
+| Extraction PDF | PyMuPDF, découpage avec `langchain-text-splitters` |
+| LLM de l'agent et génération | Groq : `openai/gpt-oss-120b` |
+| Modèle vision | Groq : `meta-llama/llama-4-scout-17b-16e-instruct` |
+| Agent | LangGraph (`StateGraph`, `ToolNode`) |
+| Protocole d'outils | MCP (serveur `FastMCP`, transport streamable HTTP, `langchain-mcp-adapters`) |
+| Interface | Streamlit |
+| Environnement | Python 3.12, uv |
 
-*Adapt this structure to the actual organization of your repository.*
+## Choix de conception
+
+- **Un seul espace d'embedding** pour le texte et les images : la recherche est simple, et une requête image fonctionne sans pipeline supplémentaire.
+- **L'agent rédige la réponse.** Les outils ne renvoient que des preuves ; il n'y a pas de second LLM qui répondrait à sa place.
+- **L'agent n'a pas besoin de voir les images.** Un outil de lecture d'image fait office d'yeux, ce qui permet d'utiliser un excellent modèle texte pour le raisonnement et un modèle vision dédié pour la perception.
+- **Séparation agent / RAG par MCP** : le serveur charge CLIP et ChromaDB une seule fois, et l'agent ne dépend que d'une URL.
+- **Défense contre l'injection de prompt** : les sources sont traitées comme des données non fiables, les consignes qu'elles contiennent sont ignorées, et `analyser_image` n'accepte que des identifiants d'images indexées, jamais un chemin libre.
+- **Garde-fous de l'agent** : nombre de recherches limité dans le prompt, limite de récursion du graphe, message d'échec explicite plutôt qu'une réponse vide.
 
 ## Installation
 
-### 1. Clone the repository
+Prérequis : Python 3.12+, [uv](https://docs.astral.sh/uv/) et une clé [Groq](https://console.groq.com).
 
 ```bash
 git clone https://github.com/Ramadiaw12/rag_multimodal.git
-cd rag_multimodal
-```
+cd rag-multimodal
 
-### 2. Create the virtual environment
-
-```bash
 uv sync
+cp .env.example .env        # puis renseignez GROQ_API_KEY
 ```
 
-If you are creating the environment manually:
+### 1. Indexer un PDF (une seule fois)
+
+L'ingestion est dans le notebook `rag_multimodal.ipynb` : extraction du texte et des images, découpage, encodage CLIP, écriture dans `chroma_pdf/`. Placez votre PDF dans `pdfs/` puis exécutez le notebook.
+
+### 2. Lancer l'application
 
 ```bash
-uv venv
-source .venv/bin/activate
+uv run streamlit run app.py
 ```
 
-### 3. Configure environment variables
-
-Create a `.env` file in the project root:
-
-```env
-GROQ_API_KEY=your_groq_api_key
-```
-
-Never commit your API key or expose it in your source code.
-
-### 4. Install dependencies
-
-If dependencies are not already declared in `pyproject.toml`, install the required packages with UV, according to the modules used in your implementation.
-
-## Usage
-
-### 1. Start the notebook
+Pour le mode « Agent via MCP », lancez aussi le serveur dans un second terminal :
 
 ```bash
-uv run jupyter notebook
+uv run python mcp_server.py
 ```
 
-Open the project notebook and execute the cells in order.
+## Utilisation
 
-### 2. Index PDF documents
-
-Add your PDF documents to the ingestion workflow.
-
-The processing pipeline extracts and prepares document content for indexing.
-
-### 3. Query the RAG system
-
-Example:
-
-```python
-sortie = rag(
-    question=(
-        "What is the main contribution of the "
-        "Transformer architecture introduced in "
-        "Attention Is All You Need?"
-    ),
-    type_resultat="texte",
-    k=8,
-    montrer_resultats=True
-)
-```
-
-### 4. Interact with the AI agent
-
-Example:
-
-```python
-sortie = interroger_agent(
-    texte=(
-        "Explique les composants de cette architecture "
-        "en t'appuyant sur les passages de "
-        "Attention Is All You Need."
-    ),
-    type_resultat="texte",
-    k=8
-)
-```
-
-The agent invokes the document retrieval tool and generates an answer using the retrieved information.
-
-## Retrieval Modes
-
-The system supports three retrieval modes:
-
-| Mode | Description |
+| Mode | Ce qui se passe |
 |---|---|
-| `texte` | Retrieve textual passages |
-| `image` | Retrieve visual document elements |
-| `tous` | Retrieve both textual and visual elements |
+| **RAG direct** | Une recherche, une génération. Le plus rapide pour une question simple. |
+| **Agent avec outils locaux** | L'agent décide des recherches, lit les images utiles et rédige. Les outils tournent dans le processus Streamlit. |
+| **Agent via MCP** | Même agent, mais les outils sont servis par le serveur MCP séparé. |
 
-The number of retrieved results is configurable through the `k` parameter.
+Exemples de questions : *« What is multi-head attention? »*, *« Que montre le schéma de l'architecture du Transformer ? »*, *« Compare le rôle de l'encodeur et du décodeur. »*
+
+## Structure du projet
+
+```
+├── app.py              # Interface Streamlit (3 modes)
+├── agent.py            # Agent LangGraph ReAct (mind / body) et outils
+├── mcp_server.py       # Serveur MCP exposant le retriever
+├── rag_core.py         # Recherche, génération, outils partagés
+├── retrieval.py        # CLIP + ChromaDB : encodage et requête
+├── rag_multimodal.ipynb# Ingestion et expérimentations
+├── pdfs/               # Documents sources
+├── chroma_pdf/         # Base vectorielle persistante
+└── .env.example
+```
+
+## Limites connues
+
+- **Langue de l'index** : CLIP ViT-B-32 est surtout entraîné sur de l'anglais. L'agent reformule donc ses recherches en anglais ; un encodeur multilingue améliorerait les requêtes en français.
+- **Embeddings texte courts** : CLIP encode au plus 77 tokens par fragment, ce qui convient aux requêtes courtes mais limite la finesse sur de longs passages.
+- **Images par chemin de fichier** : le serveur MCP et l'application doivent partager le même disque.
+- **Limites de débit** : un agent fait plusieurs appels par question, ce qui peut atteindre les quotas du plan gratuit de Groq.
+- **Pas encore d'évaluation chiffrée** : la qualité du retrieval et des réponses n'a pas été mesurée sur un jeu de questions de référence.
+
+## Pistes d'amélioration
+
+- [ ] Jeu d'évaluation (questions, passages attendus) avec rappel@k et fidélité des réponses
+- [ ] Encodeur multilingue ou reranker
+- [ ] Ingestion multi-PDF en ligne de commande
+- [ ] Renvoi des images en base64 via MCP pour un déploiement sur deux machines
+- [ ] Mémoire de conversation pour l'agent
+- [ ] Conteneurisation (Docker) et déploiement
+
+## Ce que ce projet démontre
+
+Conception d'un pipeline RAG multimodal de bout en bout, agents LLM avec LangGraph (pattern ReAct), outils d'agent et protocole MCP, recherche vectorielle (embeddings, ChromaDB), prise en compte de la sécurité (injection de prompt) et ingénierie d'interface avec Streamlit.
 
 
 ## Architecture conceptuelle de l'agent
@@ -266,16 +166,6 @@ flowchart TD
 ```
 
 
-   
-
-
-## Current Limitations
-
-- The configured GPT-OSS-120B model is used for text-based generation and agent reasoning, not direct image understanding.
-- User-provided images are not currently analyzed directly by the Groq agent.
-- Retrieved document figures can nevertheless be loaded and displayed separately using their ChromaDB identifiers and metadata.
-- Direct visual understanding can be added through a dedicated vision-capable model.
-
 ## Future Improvements
 
 - Integrate a vision-language model for direct image understanding.
@@ -300,7 +190,8 @@ This project explores several important concepts in modern AI engineering:
 
 
 
-## Author : **RD**
+## Author : 
+**RD** : [LinkedIn](https://linkedin.com/in/votre-profil) · [GitHub](https://github.com/VOTRE_COMPTE) · superrama86@gmail.com
 
 **AI Infrastructure & RAG Engineering Project**
 
