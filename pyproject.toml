@@ -22,6 +22,7 @@ dependencies = [
     "python-dotenv>=1.2.4",
     "tiktoken>=0.14.0",
     "torch>=2.15.0",
+    "torchvision>=0.29.2",
 ]
 
 [[tool.uv.index]]
@@ -31,3 +32,4 @@ explicit = true
 
 [tool.uv.sources]
 torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }

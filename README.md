@@ -6,7 +6,7 @@
 
 Posez une question à un PDF et obtenez une réponse sourcée qui s'appuie **à la fois sur le texte et sur les figures** (schémas d'architecture, graphiques, tableaux). L'agent décide lui-même quand chercher, quand lire une image et quand répondre.
 
-<!-- Remplacez par une capture ou un GIF de 20 s de l'interface : c'est ce que les visiteurs regardent en premier -->
+
 ![Démo](docs/demo.gif)
 
 ## Pourquoi ce projet
@@ -89,14 +89,12 @@ L'ingestion est dans le notebook `rag_multimodal.ipynb` : extraction du texte et
 
 ### 2. Lancer l'application
 
-```bash
-uv run streamlit run app.py
-```
-
 Pour le mode « Agent via MCP », lancez aussi le serveur dans un second terminal :
 
 ```bash
-uv run python mcp_server.py
+Terminal 1 : uv run uvicorn server:app --port 8080
+
+Terminal 2 : uv run python mcp_server.py
 ```
 
 ## Utilisation
@@ -109,19 +107,34 @@ uv run python mcp_server.py
 
 Exemples de questions : *« What is multi-head attention? »*, *« Que montre le schéma de l'architecture du Transformer ? »*, *« Compare le rôle de l'encodeur et du décodeur. »*
 
+
+
+
 ## Structure du projet
 
 ```
-├── app.py              # Interface Streamlit (3 modes)
-├── agent.py            # Agent LangGraph ReAct (mind / body) et outils
-├── mcp_server.py       # Serveur MCP exposant le retriever
-├── rag_core.py         # Recherche, génération, outils partagés
-├── retrieval.py        # CLIP + ChromaDB : encodage et requête
-├── rag_multimodal.ipynb# Ingestion et expérimentations
-├── pdfs/               # Documents sources
-├── chroma_pdf/         # Base vectorielle persistante
+├── server.py             # Backend FastAPI : API de chat en streaming (SSE), service des images
+├── static/
+│   └── index.html        # Interface web (conversation, trace de l'agent, planche de preuves)
+├── agent.py              # Agent LangGraph ReAct (mind / body) et outils
+├── context.py            # Ingénierie de contexte : filtrage, compression, fenêtre, budget de tokens
+├── mcp_server.py         # Serveur MCP exposant le retriever
+├── rag_core.py           # Recherche, génération, outils partagés
+├── retrieval.py          # CLIP + ChromaDB : encodage et requête
+├── chemins.py            # Résolution des chemins d'images (indépendante de la machine)
+├── rag_multimodal.ipynb  # Ingestion et expérimentations
+├── tests/                # Tests unitaires (contexte, chemins)
+├── pdfs/                 # Documents sources
+├── chroma_pdf/           # Base vectorielle persistante
+├── resultats_pdf/        # Textes et images extraits des PDF
+├── Dockerfile            # Image de l'application
+├── compose.yaml          # Deux services : web et serveur MCP
+├── .github/workflows/
+│   └── ci.yml            # CI : lint, tests, build de l'image
+├── pyproject.toml / uv.lock
 └── .env.example
 ```
+
 
 ## Pistes d'amélioration
 
