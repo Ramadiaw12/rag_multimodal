@@ -235,7 +235,20 @@ function handle(ev, bot, pending, q) {
   } else if (ev.event === "result") {
     const i = pending.findIndex(p => p.tool === ev.tool);
     if (i >= 0) { const { li } = pending.splice(i, 1)[0]; li.classList.remove("wait"); li.querySelector("em").textContent = "→ " + (ev.summary || "ok"); }
-  } else if (ev.event === "sources") {
+  }  else if (ev.event === "usage") {
+    if ($("#trace .idle")) $("#trace").innerHTML = "";
+
+    const li = document.createElement("li");
+
+    li.innerHTML = `<span class="a">Contexte envoyé : ~${ev.apres} / ${ev.budget} tokens`
+      + (ev.reel_entree ? ` (réel : ${ev.reel_entree})` : "")
+      + (ev.outils_tronques ? ` · ${ev.outils_tronques} résultat(s) tronqué(s)` : "")
+      + (ev.echanges_perdus ? ` · ${ev.echanges_perdus} échange(s) oublié(s)` : "")
+      + `</span>`;
+
+    $("#trace").appendChild(li);
+
+  }else if (ev.event === "sources") {  
     addSources(ev.sources);
   } else if (ev.event === "answer") {
     let html = cites(md(ev.text || ""));
@@ -248,6 +261,7 @@ function handle(ev, bot, pending, q) {
   $("#log").scrollTop = 1e9;
 }
 
+//  alors là , la fonction
 async function ask(q) {
   q = q.trim(); if (!q || busy) return;
   busy = true; $("#send").disabled = true;
