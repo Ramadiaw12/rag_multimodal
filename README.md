@@ -121,14 +121,6 @@ Exemples de questions : *« What is multi-head attention? »*, *« Que montre le
 └── .env.example
 ```
 
-## Limites connues
-
-- **Langue de l'index** : CLIP ViT-B-32 est surtout entraîné sur de l'anglais. L'agent reformule donc ses recherches en anglais ; un encodeur multilingue améliorerait les requêtes en français.
-- **Embeddings texte courts** : CLIP encode au plus 77 tokens par fragment, ce qui convient aux requêtes courtes mais limite la finesse sur de longs passages.
-- **Images par chemin de fichier** : le serveur MCP et l'application doivent partager le même disque.
-- **Limites de débit** : un agent fait plusieurs appels par question, ce qui peut atteindre les quotas du plan gratuit de Groq.
-- **Pas encore d'évaluation chiffrée** : la qualité du retrieval et des réponses n'a pas été mesurée sur un jeu de questions de référence.
-
 ## Pistes d'amélioration
 
 - [ ] Jeu d'évaluation (questions, passages attendus) avec rappel@k et fidélité des réponses
@@ -136,11 +128,10 @@ Exemples de questions : *« What is multi-head attention? »*, *« Que montre le
 - [ ] Ingestion multi-PDF en ligne de commande
 - [ ] Renvoi des images en base64 via MCP pour un déploiement sur deux machines
 - [ ] Mémoire de conversation pour l'agent
-- [ ] Conteneurisation (Docker) et déploiement
 
 ## Ce que ce projet démontre
 
-Conception d'un pipeline RAG multimodal de bout en bout, agents LLM avec LangGraph (pattern ReAct), outils d'agent et protocole MCP, recherche vectorielle (embeddings, ChromaDB), prise en compte de la sécurité (injection de prompt) et ingénierie d'interface avec Streamlit.
+Conception d'un pipeline RAG multimodal de bout en bout, agents LLM avec LangGraph (pattern ReAct), outils d'agent et protocole MCP, recherche vectorielle (embeddings, ChromaDB), prise en compte de la sécurité (injection de prompt) et ingénierie d'interface web.
 
 
 ## Architecture conceptuelle de l'agent
@@ -169,24 +160,22 @@ flowchart TD
 ## Future Improvements
 
 - Integrate a vision-language model for direct image understanding.
-- Improve image and text cross-modal retrieval.
-- Add document-level metadata filtering.
-- Implement hybrid search combining semantic and keyword retrieval.
-- Improve source attribution and answer evaluation.
-- Add a web interface for document uploads and conversational interaction.
-- Deploy the application through a containerized infrastructure.
+- Improve image and text cross-modal retrieval
+- Implement hybrid search combining semantic and keyword retrieval
+- Improve source attribution and answer evaluation
+- Add a web interface for document uploads and conversational interaction
 
 ## Learning Objectives
 
 This project explores several important concepts in modern AI engineering:
 
-- Retrieval-Augmented Generation (RAG).
-- Multimodal document processing.
-- Vector databases and semantic search.
-- Embedding models.
-- LLM integration and inference.
-- Agentic workflows and tool calling.
-- Context management and source attribution.
+- Retrieval-Augmented Generation (RAG)
+- Multimodal document processing
+- Vector databases and semantic search
+- Embedding models
+- LLM integration and inference
+- Agentic workflows and tool calling
+- Context management and source attribution
 
 
 
