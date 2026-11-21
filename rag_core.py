@@ -133,9 +133,9 @@ def generer_reponse(question, sources, max_images=3):
 
     # Images transmises -> modèle vision ; sinon -> modèle texte
     modele = MODELE_VISION if nombre_images > 0 else MODELE_TEXTE
-    options = {"max_completion_tokens": 1500, "temperature": 0.1}
+    options = {"max_completion_tokens": 300, "temperature": 0.1}
     if modele.startswith("openai/gpt-oss"):  # modèle de raisonnement : on lui laisse de la marge
-        options.update(max_completion_tokens=4000, reasoning_effort="low")
+        options.update(max_completion_tokens=10000, reasoning_effort="low") # on laisse le modèle gérer la longueur de la réponse
 
     reponse = client_generation.chat.completions.create(
         model=modele,
@@ -194,13 +194,13 @@ def outil_analyser_image(id_image: str, question: str) -> str:
                 {"type": "image_url", "image_url": {"url": data_url}},
             ]},
         ],
-        max_completion_tokens=800,
+        max_completion_tokens=1500,
         temperature=0.1,
     )
     return json.dumps({"id": id_image, "pdf": meta["pdf"], "page": meta["page"],
                        "observation": reponse.choices[0].message.content}, ensure_ascii=False)
 
-
+# ici nous avons la fonction outil_repondre qui combine la récupération des sources et la génération de la réponse pour fournir un pipeline complet. Elle est utilisée par l'agent et le serveur MCP pour répondre aux questions en utilisant les sources pertinentes trouvées dans la base vectorielle
 def outil_repondre(question: str, k: int = 6, type_resultat: str = "") -> str:
     """Pipeline RAG complet (utile pour d'autres clients MCP ; l'agent de l'app ne l'utilise pas)."""
     res = repondre(question, k, type_resultat or None)
