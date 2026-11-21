@@ -110,6 +110,7 @@ async def run_agent(agent, question: str, history=(), on_step=None):
     """Retourne (réponse, étapes, sources)."""
     messages = [*history, {"role": "user", "content": question}]
     steps, sources, final = {}, {}, ""
+
     # on exécute l'agent en mode flux, en passant les messages et la configuration de récursion. On traite les mises à jour pour extraire les messages, les appels d'outils et les résultats, en stockant les étapes et les sources trouvées. Si l'agent atteint sa limite de récursion ou ne produit pas de réponse, un message approprié est renvoyé
     try:
         async for update in agent.astream({"messages": messages},
@@ -118,6 +119,14 @@ async def run_agent(agent, question: str, history=(), on_step=None):
             for node_out in update.values():
                 for m in (node_out or {}).get("messages", []):
                     if isinstance(m, AIMessage):
+                        # on récupère le contexte de la réponse (nombre de tokens utilisés, etc.) et on appelle la fonction on_step si elle est fournie. 
+                        # On stocke également les appels d'outils effectués par l'agent et on met à jour les étapes correspondantes avec un résumé indiquant si une image a été analysée ou combien de sources ont été trouvées. Si aucune source n'a été trouvée, on stocke la réponse finale produite par l'agent
+                        ctx = m.response_metadata.get("contexte")
+                        if ctx and on_step:
+                            u = m.usage_metadata or {}
+                            on_step("usage", {**ctx, "reel_entree": u.get("input_tokens"), # usage réel côté LLM, pas côté agent
+                                              "reel_sortie": u.get("output_tokens")})
+                        # boucle pour stocker les appels d'outils effectués par l'agent et mettre à jour les étapes correspondantes avec un résumé indiquant si une image a été analysée ou combien de sources ont été trouvées. Si aucune source n'a été trouvée, on stocke la réponse finale produite par l'agent
                         for c in m.tool_calls:
                             steps[c["id"]] = {"tool": c["name"], "args": c["args"]}
                             on_step and on_step("call", steps[c["id"]])
@@ -133,8 +142,10 @@ async def run_agent(agent, question: str, history=(), on_step=None):
                         for s in found:
                             sources[s["id"]] = s
                         step = steps.get(m.tool_call_id, {"tool": m.name, "args": {}})
-                        step["summary"] = ("image analysée" if "observation" in payload
-                                           else f"{len(found)} source(s)")
+                        # on récupère le nombre d'éléments écartés (ecartees) à partir du payload si c'est un dictionnaire, sinon on le met à None. On met ensuite à jour l'étape correspondante avec un résumé indiquant si une image a été analysée ou combien de sources ont été trouvées, en incluant le nombre d'éléments écartés si disponible. Si une fonction on_step est fournie, elle est appelée avec l'événement "result" et les détails de l'étape
+                        ecartees = payload.get("ecartees") if isinstance(payload, dict) else None
+                        step["summary"] = ("image analysée" if "observation" in payload # on a analysé une image
+                                           else f"{len(found)} source(s)" + (f", {ecartees} écartée(s)" if ecartees else ""))
                         on_step and on_step("result", dict(step))
     # exception GraphRecursionError est levée si l'agent atteint sa limite de récursion sans produire de réponse finale. Dans ce cas, un message approprié est renvoyé pour indiquer que l'agent n'a pas pu conclure et qu'il faut reformuler la question. 
     # Si la réponse finale est vide ou ne contient que des espaces, un message est également renvoyé pour indiquer que l'agent n'a pas produit de réponse et qu'il faut réessayer ou reformuler la question
