@@ -21,5 +21,6 @@ dependencies = [
     "pymupdf>=2.0",
     "python-dotenv>=1.2.4",
     "streamlit>=1.66.1",
+    "tiktoken>=0.14.0",
     "torch>=2.15.0",
 ]

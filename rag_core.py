@@ -10,6 +10,7 @@ from pathlib import Path
 from PIL import Image
 from groq import Groq
 from retrieval import rechercher, collection
+from context import filtrer_sources, compresser_passage
 
 from retrieval import rechercher   # ex. : from mon_module import rechercher
 
@@ -155,17 +156,19 @@ def repondre(question, k=6, type_resultat=None, image_requete=None, max_images=3
 
 
 # ---------------- OUTILS PARTAGÉS (agent local + serveur MCP) ----------------
-# Ces fonctions sont utilisées à la fois par l'agent local et par le serveur MCP pour exposer les fonctionnalités de recherche et de réponse aux questions.
-def _allege(sources, n=600):
-    """Tronque les extraits et arrondit les scores pour économiser les tokens côté agent."""
-    return [{**s, "contenu": (s["contenu"] or "")[:n], "similarite": round(s["similarite"], 3)}
+# ALors là, on definit _allege pour alléger les sources transmises à l'agent ou au serveur MCP, en ne gardant que les champs essentiels. On définit ensuite les fonctions outil_rechercher, outil_analyser_image et outil_repondre qui sont exposées comme outils pour l'agent et le serveur MCP. Ces fonctions appellent les fonctions correspondantes de récupération des sources et de génération de réponse, et renvoient les résultats sous forme de JSON.
+def _allege(sources, requete):
+    return [{"id": s["id"], "type": s["type"], "pdf": s["pdf"], "page": s["page"],
+             "similarite": round(s["similarite"], 3),
+             "contenu": compresser_passage(s["contenu"], requete) if s["type"] == "texte" else ""}
             for s in sources]
 
-
+# ici on definit la fonction outil_rechercher qui interroge la base vectorielle et renvoie les passages de texte et les images les plus proches, sans rédiger de réponse. La base est indexée en anglais, donc la requête doit être formulée en anglais. Le paramètre type_resultat peut être "texte", "image", ou une chaîne vide pour les deux types de résultats. La fonction utilise la fonction recuperer_sources pour effectuer la recherche et filtrer les sources avant de les renvoyer sous forme de JSON. 
 def outil_rechercher(question: str, k: int = 6, type_resultat: str = "") -> str:
-    """Retrieval seul : l'agent reçoit les sources et rédige lui-même la réponse."""
     _, sources = recuperer_sources(question, k, type_resultat or None)
-    return json.dumps({"sources": _allege(sources)}, ensure_ascii=False, default=float)
+    retenues = filtrer_sources(sources)
+    return json.dumps({"sources": _allege(retenues, question), "ecartees": len(sources) - len(retenues)},
+                      ensure_ascii=False, default=float)
 
 # ici la fonction outil_analyser_image lit une image indexée avec le modèle vision et renvoie une observation en texte. Elle est utilisée par l'agent et le serveur MCP pour fournir des observations sur les images trouvées lors de la recherche
 def outil_analyser_image(id_image: str, question: str) -> str:
@@ -204,5 +207,5 @@ def outil_analyser_image(id_image: str, question: str) -> str:
 def outil_repondre(question: str, k: int = 6, type_resultat: str = "") -> str:
     """Pipeline RAG complet (utile pour d'autres clients MCP ; l'agent de l'app ne l'utilise pas)."""
     res = repondre(question, k, type_resultat or None)
-    res["sources"] = _allege(res["sources"])
+    res["sources"] = _allege(res["sources"], question) # on allège les sources transmises à l'agent ou au serveur MCP, en ne gardant que les champs essentiels. On renvoie ensuite le résultat sous forme de JSON, avec les avertissements éventuels
     return json.dumps(res, ensure_ascii=False, default=float)
