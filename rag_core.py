@@ -1,5 +1,6 @@
 # FIchier rag_core.py : contient les fonctions de recherche et de génération de réponses pour le RAG multimodal. 
-# Ces fonctions sont utilisées par l'agent local et le serveur MCP pour exposer les fonctionnalités de recherche et de réponse aux questions.
+# Ces fonctions sont utilisées par l'agent local et le serveur MCP pour exposer les fonctionnalités de recherche et de réponse aux questions
+# en gros Mise en forme des résultats
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -166,7 +167,7 @@ def outil_rechercher(question: str, k: int = 6, type_resultat: str = "") -> str:
     _, sources = recuperer_sources(question, k, type_resultat or None)
     return json.dumps({"sources": _allege(sources)}, ensure_ascii=False, default=float)
 
-
+# ici la fonction outil_analyser_image lit une image indexée avec le modèle vision et renvoie une observation en texte. Elle est utilisée par l'agent et le serveur MCP pour fournir des observations sur les images trouvées lors de la recherche
 def outil_analyser_image(id_image: str, question: str) -> str:
     """Lit une image indexée avec le modèle vision et renvoie une observation en texte."""
     res = collection.get(ids=[id_image], include=["metadatas"])
