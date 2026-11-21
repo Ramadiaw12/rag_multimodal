@@ -60,7 +60,7 @@ def image(id: str):
     res = collection.get(ids=[id], include=["metadatas"])
     if not res["ids"] or res["metadatas"][0].get("type") != "image":
         raise HTTPException(404, "Image inconnue")
-    path = Path(res["metadatas"][0]["source"])
+    path = resoudre_image(res["metadatas"][0]["source"]) 
     if not path.is_file():
         raise HTTPException(404, "Fichier introuvable")
     return FileResponse(path)

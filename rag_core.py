@@ -118,7 +118,7 @@ def generer_reponse(question, sources, max_images=3):
                                       f"(limite de {max_images} images).")
                 continue
             try:
-                data_url = image_vers_data_url(source["source"])
+                data_url = image_vers_data_url(resoudre_image(source["source"]))
             except Exception as erreur:
                 avertissements.append(f"{source['reference']} : image non transmise — {erreur}")
                 continue
@@ -180,7 +180,7 @@ def outil_analyser_image(id_image: str, question: str) -> str:
     meta = res["metadatas"][0]
 
     try:
-        data_url = image_vers_data_url(meta["source"])
+        data_url = image_vers_data_url(resoudre_image(meta["source"]))
     except Exception as erreur:
         return json.dumps({"erreur": f"Image illisible : {erreur}"}, ensure_ascii=False)
 
