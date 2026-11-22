@@ -1,13 +1,34 @@
 # RAG multimodal agentique : texte, schémas et graphiques
 
-![CI](https://github.com/VOTRE_COMPTE/rag-multimodal/actions/workflows/ci.ymlbadge.svg)
+
+**Posez une question à un PDF : un agent lit le texte *et* les figures, puis répond en citant ses sources.**
+
+[![CI](https://github.com/Ramadiaw12/rag_multimodal/actions/workflows/ci.yml/badge.svg)](https://github.com/Ramadiaw12/rag_multimodal/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+| Couche | Technologies |
+|---|---|
+| **IA et recherche** | ![OpenCLIP](https://img.shields.io/badge/OpenCLIP-ViT--B--32-8A2BE2) ![PyTorch](https://img.shields.io/badge/PyTorch-CPU-EE4C2C?logo=pytorch&logoColor=white) ![Groq](https://img.shields.io/badge/Groq-gpt--oss--120b%20%7C%20Llama%204%20Scout-F55036) |
+| **Agent** | ![LangGraph](https://img.shields.io/badge/LangGraph-agent%20ReAct-1C3C3C) ![LangChain](https://img.shields.io/badge/LangChain-1.x-1C3C3C?logo=langchain&logoColor=white) ![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-000000) |
+| **Données** | ![ChromaDB](https://img.shields.io/badge/ChromaDB-base%20vectorielle-FFC107) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white) ![PyMuPDF](https://img.shields.io/badge/PyMuPDF-extraction%20PDF-0A66C2) |
+| **Application** | ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-SSE-009688?logo=fastapi&logoColor=white) ![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white) ![CSS3](https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=white) ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black) |
+| **Infra et qualité** | ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white) ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-CI%2FCD-2088FF?logo=githubactions&logoColor=white) ![GHCR](https://img.shields.io/badge/GHCR-image%20publiée-181717?logo=github&logoColor=white) ![pytest](https://img.shields.io/badge/pytest-tests-0A9EDC?logo=pytest&logoColor=white) ![ruff](https://img.shields.io/badge/ruff-lint-D7FF64?logo=ruff&logoColor=black) ![uv](https://img.shields.io/badge/uv-gestionnaire%20de%20paquets-DE5FE9) |
+
 
 > *Multimodal agentic RAG: a LangGraph ReAct agent queries a CLIP + ChromaDB index of text and images, reads figures with a vision model, and exposes its retriever through an MCP server.*
 
 Posez une question à un PDF et obtenez une réponse sourcée qui s'appuie **à la fois sur le texte et sur les figures** (schémas d'architecture, graphiques, tableaux). L'agent décide lui-même quand chercher, quand lire une image et quand répondre.
 
+## 🖥️ Interface utilisateur – RAG Multimodal
 
-![Démo](docs/demo.gif)
+Une interface intuitive et interactive permettant d'explorer une base de connaissances multimodale à travers une expérience conversationnelle.
+
+Les utilisateurs peuvent interroger leurs documents et contenus visuels en langage naturel, effectuer des recherches contextuelles et obtenir des réponses pertinentes générées par un LLM à partir des informations récupérées.
+
+Cette interface constitue le point d'interaction avec une architecture RAG multimodale intégrant l'ingestion documentaire, les embeddings, la recherche sémantique et le traitement des contenus visuels.
+
+**Objectif :** transformer des documents non structurés en connaissances accessibles, exploitables et interrogeables grâce à l'intelligence artificielle.
+![RAG Multimodal](./images/interface.png)
 
 ## Pourquoi ce projet
 
