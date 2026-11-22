@@ -1,6 +1,8 @@
 # FIchier rag_core.py : contient les fonctions de recherche et de génération de réponses pour le RAG multimodal. 
 # Ces fonctions sont utilisées par l'agent local et le serveur MCP pour exposer les fonctionnalités de recherche et de réponse aux questions
 # en gros Mise en forme des résultats
+# Copyright 2026 Ramatoulaye Diawane
+# SPDX-License-Identifier: Apache-2.0
 from dotenv import load_dotenv
 load_dotenv()
 

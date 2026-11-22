@@ -1,5 +1,7 @@
 # Étape 5 : Transformation du Retriever en Outil Agentique (Tool)
 # FIchier retrieval.py : contient les fonctions de recherche vectorielle pour le RAG multimodal
+# Copyright 2026 Ramatoulaye Diawane
+# SPDX-License-Identifier: Apache-2.0
 """Partie requête de l'index : mêmes modèle, normalisation et collection que l'ingestion du notebook."""
 import os
 from pathlib import Path

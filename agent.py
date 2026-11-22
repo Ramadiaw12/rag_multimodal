@@ -1,5 +1,7 @@
 # Étape 6 : Construction de l'Agent IA (Pattern ReAct & LangGraph)
 # Agent qui interroge un RAG (outil de recherche documentaire) pour répondre à des questions complexes
+# Copyright 2026 Ramatoulaye Diawane
+# SPDX-License-Identifier: Apache-2.0
 from dotenv import load_dotenv
 load_dotenv()
 

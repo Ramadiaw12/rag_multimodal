@@ -337,10 +337,14 @@ This project explores several important concepts in modern AI engineering:
 ## Author : 
 **RD** : [LinkedIn](https://linkedin.com/in/votre-profil) · [GitHub](https://github.com/VOTRE_COMPTE) · superrama86@gmail.com
 
-**AI Infrastructure & RAG Engineering Project**
 
 Developed as a hands-on exploration of document intelligence, multimodal retrieval, and agentic AI systems.
 
 ---
 
 *Building intelligent systems that connect unstructured data, retrieval pipelines, and LLM-powered applications.*
+## 📄 License
+
+This project is licensed under the **Apache License 2.0**.
+
+See the [LICENSE](./LICENSE) file for details.
