@@ -136,19 +136,6 @@ Exemples de questions : *« What is multi-head attention? »*, *« Que montre le
 ```
 
 
-## Pistes d'amélioration
-
-- [ ] Jeu d'évaluation (questions, passages attendus) avec rappel@k et fidélité des réponses
-- [ ] Encodeur multilingue ou reranker
-- [ ] Ingestion multi-PDF en ligne de commande
-- [ ] Renvoi des images en base64 via MCP pour un déploiement sur deux machines
-- [ ] Mémoire de conversation pour l'agent
-
-## Ce que ce projet démontre
-
-Conception d'un pipeline RAG multimodal de bout en bout, agents LLM avec LangGraph (pattern ReAct), outils d'agent et protocole MCP, recherche vectorielle (embeddings, ChromaDB), prise en compte de la sécurité (injection de prompt) et ingénierie d'interface web.
-
-
 ## Architecture conceptuelle de l'agent
 
 ```mermaid
@@ -171,6 +158,136 @@ flowchart TD
     class END last
 ```
 
+## Utiliser PostgreSQL + pgvector à la place de ChromaDB
+
+Le projet stocke ses vecteurs dans ChromaDB par défaut, parce qu'il ne demande aucun serveur. Si vous avez déjà une base PostgreSQL, ou si vous voulez une base de production, vous pouvez la remplacer par **PostgreSQL + [pgvector](https://github.com/pgvector/pgvector)** en changeant une variable d'environnement. Le reste du code (agent, serveur MCP, interface web) ne change pas.
+
+### Quand choisir lequel
+
+| | ChromaDB (défaut) | PostgreSQL + pgvector |
+|---|---|---|
+| Démarrage | Aucun service, un simple dossier | Un serveur PostgreSQL |
+| Données applicatives | Non | Oui : utilisateurs, historique, métadonnées dans la même base |
+| Filtres | Filtres sur métadonnées | SQL complet |
+| Sauvegarde, réplication | Copie du dossier | Outils PostgreSQL habituels |
+| Idéal pour | Prototypes, démos locales | Application qui utilise déjà PostgreSQL, production |
+
+À l'échelle d'un PDF ou de quelques milliers de passages, les deux répondent en quelques millisecondes : le choix tient surtout à l'infrastructure.
+
+### Comment ça s'intègre
+
+```
+rag_core.py / agent.py / server.py
+            │
+        retrieval.py        encode la requête avec CLIP
+            │
+       vectorstore.py       VECTOR_BACKEND = chroma | pgvector
+        ┌───┴──────────┐
+   ChromaStore    PgVectorStore
+```
+
+`vectorstore.py` est la seule couche qui connaît la base. Les deux backends renvoient leurs résultats au **même format** (`ids`, `documents`, `metadatas`, `distances`), avec la même distance cosinus, donc `recuperer_sources` fonctionne sans modification. Un test vérifie que les deux backends renvoient les mêmes voisins sur les mêmes données (`tests/test_vectorstore.py`).
+
+### Mise en route
+
+**1. Démarrer PostgreSQL avec pgvector**
+
+```bash
+docker run -d --name pgvector \
+  -e POSTGRES_USER=rag -e POSTGRES_PASSWORD=rag -e POSTGRES_DB=rag \
+  -p 127.0.0.1:5432:5432 pgvector/pgvector:pg16
+```
+
+Le mot de passe `rag` convient pour un essai local ; changez-le avant toute exposition.
+
+**2. Installer les dépendances**
+
+```bash
+uv add "psycopg[binary]" pgvector
+```
+
+**3. Configurer l'environnement** (fichier `.env`)
+
+```
+VECTOR_BACKEND=pgvector
+DATABASE_URL=postgresql://rag:rag@localhost:5432/rag
+```
+
+Au premier démarrage, le projet crée lui-même l'extension `vector`, la table et les index.
+
+**4. Charger vos données**, de l'une des deux façons :
+
+- **Migrer l'index ChromaDB existant**, sans recalculer les embeddings :
+  ```bash
+  uv run python migrate_chroma_to_pgvector.py
+  ```
+  Le script affiche le nombre d'éléments des deux bases et s'arrête si elles diffèrent.
+- **Écrire depuis votre propre ingestion** :
+  ```python
+  from vectorstore import PgVectorStore
+
+  store = PgVectorStore()
+  store.add(
+      ids=["doc-p1-0"],
+      embeddings=[vecteur_clip_512],   # liste de 512 floats, normalisée
+      documents=["texte du passage"],
+      metadatas=[{"type": "texte", "pdf": "doc.pdf", "page": 1, "source": ""}],
+  )
+  ```
+  Pour une image, mettez `"type": "image"` et `"source"` avec le chemin du fichier.
+
+**5. Lancer l'application** comme d'habitude :
+
+```bash
+uv run uvicorn server:app --port 8080
+```
+
+### Avec Docker Compose
+
+```bash
+docker compose -f compose.yaml -f compose.pgvector.yaml up --build
+```
+
+La surcouche ajoute un service `db` et configure `web` et `mcp` pour l'utiliser. Les images extraites restent à fournir dans `./data/images` : seul l'index passe dans PostgreSQL.
+
+### Ce que le projet crée dans PostgreSQL
+
+```sql
+CREATE TABLE chunks (
+    id        TEXT PRIMARY KEY,
+    type      TEXT NOT NULL,             -- 'texte' ou 'image'
+    pdf       TEXT,
+    page      INTEGER,
+    source    TEXT,                      -- chemin de l'image
+    document  TEXT,
+    embedding vector(512) NOT NULL
+);
+CREATE INDEX ON chunks USING hnsw (embedding vector_cosine_ops);
+```
+
+Une recherche est une requête SQL ordinaire. L'opérateur `<=>` est la distance cosinus :
+
+```sql
+SELECT pdf, page, 1 - (embedding <=> :requete) AS similarite
+FROM chunks
+WHERE type = 'texte'
+ORDER BY embedding <=> :requete
+LIMIT 5;
+```
+
+Pour inspecter l'index :
+
+```sql
+SELECT type, pdf, count(*) FROM chunks GROUP BY type, pdf;
+```
+
+### Points d'attention
+
+- **Dimension** : la table est en `vector(512)`, la taille des embeddings CLIP ViT-B-32. Si vous changez de modèle d'embedding, changez `DIM` dans `vectorstore.py` et recréez la table.
+- **Métrique** : l'index `vector_cosine_ops` et l'opérateur `<=>` doivent aller ensemble. Un index cosinus n'accélère pas une requête en distance euclidienne (`<->`).
+- **Filtre et index HNSW** : pgvector applique le filtre `WHERE type = ...` après le parcours de l'index, donc une requête très sélective peut renvoyer moins de `k` résultats. Le projet règle `hnsw.ef_search` à 100 (variable `HNSW_EF_SEARCH`). Avec pgvector 0.8 ou plus, vous pouvez aussi activer `SET hnsw.iterative_scan = relaxed_order`. À l'échelle de ce projet, le problème ne se pose pas.
+- **Connexions** : `PgVectorStore` ouvre une connexion par opération, ce qui suffit pour une démo. Pour du trafic réel, remplacez-la par un pool (`psycopg_pool`).
+- **Sécurité** : ne publiez pas le port 5432 sur Internet, utilisez un mot de passe fort et ne le versionnez jamais.
 
 ## Future Improvements
 
@@ -179,6 +296,8 @@ flowchart TD
 - Implement hybrid search combining semantic and keyword retrieval
 - Improve source attribution and answer evaluation
 - Add a web interface for document uploads and conversational interaction
+- Mémoire de conversation pour l'agent
+- 
 
 ## Learning Objectives
 
