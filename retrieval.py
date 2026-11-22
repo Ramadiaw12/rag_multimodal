@@ -63,14 +63,14 @@ def rechercher(texte=None, image=None, type_resultat=None, k=5):
     Fournir soit un texte, soit un chemin d'image.
     type_resultat : None, "texte" ou "image".
     """
-    if (texte is None) == (image is None):
+    if (texte is None) == (image is None): # Cette condition vérifie que l'un des deux paramètres est fourni, mais pas les deux. Si les deux sont None ou si les deux sont fournis, on lève une exception
         raise ValueError("Fournissez soit un texte, soit une image.")
     if type_resultat not in (None, "texte", "image"):
         raise ValueError("type_resultat doit être 'texte', 'image' ou None.")
     if k < 1:
         raise ValueError("k doit être supérieur ou égal à 1.")
 
-    total = collection.count()
+    total = collection.count() # On compte le nombre total de documents dans la collection ChromaDB. Si la collection est vide, on lève une exception pour éviter de faire une requête inutile
     if total == 0:
         raise ValueError("La collection est vide.")
 

@@ -1,3 +1,4 @@
+# Fichier pour résoudre les chemins d'images dans le conteneur, indépendamment de la machine qui a fait l'ingestion.
 """Résolution des chemins d'images : indépendante de la machine qui a fait l'ingestion.
 La base stocke des chemins absolus (ex. /home/moi/projet/...) qui n'existent pas dans un conteneur."""
 import os
