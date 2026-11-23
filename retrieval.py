@@ -76,6 +76,7 @@ def rechercher(texte=None, image=None, type_resultat=None, k=5):
     if total == 0:
         raise ValueError("La collection est vide.")
 
+    # On encode le texte ou l'image en vecteur. Si un texte est fourni, on l'encode en utilisant la fonction encoder_textes. Si une image est fournie, on l'encode en utilisant la fonction encoder_image. Le vecteur résultant sera utilisé pour la recherche vectorielle dans la collection ChromaDB
     vecteur = encoder_textes([texte])[0] if texte is not None else encoder_image(image)
 
     options = {}

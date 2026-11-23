@@ -100,10 +100,11 @@ def generer_reponse(question, sources, max_images=3):
     contenu = [{"type": "text", "text": f"Question de l'utilisateur :\n{question}"}]
     sources_utilisees, avertissements, nombre_images = [], [], 0
 
+    # On parcourt les sources récupérées et on prépare le contenu à transmettre au modèle. On gère les textes et les images séparément, en respectant la limite de max_images pour les images. On ajoute également des avertissements si certaines sources ne peuvent pas être transmises
     for source in sources:
         informations = {"reference": source["reference"], "type": source["type"],
                         "pdf": source["pdf"], "page": source["page"]}
-
+        # On vérifie le type de la source et on prépare le contenu en conséquence. Pour les textes, on ajoute le texte directement. Pour les images, on convertit l'image en data URL et on l'ajoute au contenu. On gère également les avertissements pour les images non transmises ou illisibles
         if source["type"] == "texte":
             texte = source["contenu"]
             if not texte or not texte.strip():
@@ -119,6 +120,7 @@ def generer_reponse(question, sources, max_images=3):
                 avertissements.append(f"{source['reference']} : image non transmise "
                                       f"(limite de {max_images} images).")
                 continue
+            # On tente de convertir l'image en data URL pour la transmettre au modèle. Si une erreur survient, on ajoute un avertissement et on continue avec les autres sources
             try:
                 data_url = image_vers_data_url(resoudre_image(source["source"]))
             except Exception as erreur:
