@@ -17,6 +17,7 @@ from chemins import resoudre_image
 
 from retrieval import rechercher   # ex. : from mon_module import rechercher
 
+# on définit le client Groq pour la génération de réponses à partir des sources récupérées. Le client utilise la clé d'API stockée dans la variable d'environnement GROQ_API_KEY. On définit également les modèles de vision et de texte à utiliser pour la génération de réponses, ainsi que les instructions à fournir au modèle pour qu'il se comporte comme un assistant de question-réponse documentaire. Ces instructions précisent notamment que le modèle doit répondre en français, s'appuyer uniquement sur les sources fournies, citer les sources utilisées, et ne pas inventer d'informations absentes des sources.
 client_generation = Groq(api_key=os.environ["GROQ_API_KEY"])
 MODELE_VISION = os.getenv("MODELE_VISION", "meta-llama/llama-4-scout-17b-16e-instruct")
 MODELE_TEXTE = os.getenv("MODELE_TEXTE", "openai/gpt-oss-120b")

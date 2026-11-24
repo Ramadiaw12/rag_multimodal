@@ -17,8 +17,7 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 from langchain_core.utils.function_calling import convert_to_openai_tool
 from context import ajuster_au_budget, count_tokens
-from langgraph.checkpoint.memory import InMemorySaver
-from langgraph.store.memory import InMemoryStore
+
 
 # on définit le checkpointer et le store pour gérer l'état de l'agent et les messages échangés. Le checkpointer est utilisé pour stocker temporairement les messages de la conversation, tandis que le store est utilisé pour stocker les informations à long terme sur l'utilisateur. Ces deux composants sont essentiels pour permettre à l'agent de maintenir un contexte cohérent au fil des interactions avec l'utilisateur.
 checkpointer = InMemorySaver()   # court terme (la conversation)
