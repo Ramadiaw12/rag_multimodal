@@ -1,3 +1,4 @@
+# LE FICHIER server.py est le serveur web principal de l'application RAG multimodale. Il utilise FastAPI pour gérer les requêtes HTTP et les Server-Sent Events (SSE) pour envoyer des mises à jour en temps réel au navigateur. Il définit plusieurs routes pour servir la page HTML principale, vérifier l'état de santé du serveur, servir les images indexées et gérer les requêtes de chat. Le serveur peut fonctionner en mode direct (pipeline RAG complet) ou en mode agent (local ou MCP) pour répondre aux questions des utilisateurs
 """Backend web : FastAPI + Server-Sent Events. Remplace Streamlit.
 Lancer : uv run uvicorn server:app --port 8080"""
 import asyncio
@@ -13,18 +14,19 @@ import rag_core
 from retrieval import collection
 from chemins import resoudre_image
 
+# On définit la racine du projet et on crée une instance de FastAPI avec un titre. On initialise également un dictionnaire vide pour stocker les agents créés en fonction du mode (local ou MCP).
 ROOT = Path(__file__).resolve().parent
 app = FastAPI(title="RAG multimodal")
 _agents: dict = {}
 
-
+# On définit un modèle de données Pydantic pour représenter les requêtes de chat. Il contient la question posée par l'utilisateur, le mode de fonctionnement (direct, local ou MCP), le nombre de sources à récupérer (k) et l'historique des échanges précédents.
 class ChatIn(BaseModel):
     question: str
     mode: str = "local"      # "direct" | "local" | "mcp"
     k: int = 6
     history: list[dict] = []
 
-
+# async def get_agent(mode: str): vas definir une fonction asynchrone qui prend en entrée un mode (local ou MCP) et renvoie un agent correspondant. Si l'agent n'existe pas encore dans le dictionnaire _agents, il est créé en utilisant les outils appropriés (locaux ou MCP) et stocké dans le dictionnaire pour une utilisation future
 async def get_agent(mode: str):
     if mode not in _agents:
         tools = ag.local_tools() if mode == "local" else await ag.mcp_tools()
@@ -65,7 +67,7 @@ def image(id: str):
         raise HTTPException(404, "Fichier introuvable")
     return FileResponse(path)
 
-
+# 
 @app.post("/api/chat")
 async def chat(body: ChatIn):
     question = body.question.strip()

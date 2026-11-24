@@ -81,7 +81,7 @@ def image_vers_data_url(chemin, taille_max=(1024, 1024)):
     chemin = Path(chemin)
     if not chemin.is_file():
         raise FileNotFoundError(f"Image introuvable : {chemin}")
-
+    # On ouvre l'image avec PIL, on la convertit en RGB, on la redimensionne pour qu'elle ne dépasse pas la taille maximale spécifiée, puis on la sauvegarde dans un tampon en mémoire au format JPEG avec une qualité de 85. Ensuite, on encode le contenu du tampon en base64 et on renvoie une chaîne de caractères représentant l'image sous forme de data URL.
     with Image.open(chemin) as image:
         image_rgb = image.convert("RGB")
         image_rgb.thumbnail(taille_max)
