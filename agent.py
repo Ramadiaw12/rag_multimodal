@@ -19,9 +19,6 @@ from langchain_core.utils.function_calling import convert_to_openai_tool
 from context import ajuster_au_budget, count_tokens
 
 
-# on définit le checkpointer et le store pour gérer l'état de l'agent et les messages échangés. Le checkpointer est utilisé pour stocker temporairement les messages de la conversation, tandis que le store est utilisé pour stocker les informations à long terme sur l'utilisateur. Ces deux composants sont essentiels pour permettre à l'agent de maintenir un contexte cohérent au fil des interactions avec l'utilisateur.
-checkpointer = InMemorySaver()   # court terme (la conversation)
-store = InMemoryStore()          # long terme (l'utilisateur)
 
 # ici on définit l'URL du serveur MCP pour que l'agent distant puisse appeler les outils de recherche et d'analyse d'images. On définit également la liste des outils exposés par le serveur MCP, qui sont utilisés par l'agent pour interroger la base vectorielle et analyser les images. Le prompt système décrit le comportement attendu de l'agent, en précisant qu'il doit toujours commencer par rechercher des sources, analyser les images si nécessaire, reformuler la recherche si les résultats sont insuffisants, et rédiger une réponse finale structurée en citant les sources.
 MCP_URL = os.getenv("MCP_URL", "http://127.0.0.1:8000/mcp")
