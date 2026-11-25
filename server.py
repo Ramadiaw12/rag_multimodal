@@ -1,3 +1,4 @@
+# Ce fichier contient le backend web FastAPI + SSE pour l'application RAG multimodal.
 """Backend web : FastAPI + Server-Sent Events.
 Lancer : uv run uvicorn server:app --port 8080
 
@@ -24,9 +25,11 @@ import rag_core
 from chemins import resoudre_image
 from retrieval import collection
 
+# variables globales pour le serveur FastAPI : agent, timeout, logger
 log = logging.getLogger("rag.server")
 ROOT = Path(__file__).resolve().parent
 
+# Réglages de l'agent et du serveur FastAPI
 AGENT_TOOLS = os.getenv("AGENT_TOOLS", "local").lower()
 if AGENT_TOOLS not in ("local", "mcp"):
     raise RuntimeError(f"AGENT_TOOLS doit valoir 'local' ou 'mcp' (reçu : {AGENT_TOOLS!r}).")
@@ -37,13 +40,14 @@ _agent = None
 _agent_lock = asyncio.Lock()
 
 
+# Pydantic models pour la validation des entrées et sorties JSON
 class ChatIn(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
     mode: Literal["direct", "agent"] = "agent"
     k: int = Field(default=6, ge=1, le=15)
     history: list[dict] = Field(default_factory=list, max_length=20)
 
-
+# Alors là on ne peut pas faire mieux que de copier-coller la docstring de rag_core.py, qui est la source unique de vérité pour l'agent
 def historique_propre(history: list[dict]) -> list[dict]:
     """Le navigateur n'est pas fiable : on ne garde que des messages user/assistant en texte,
     jamais de rôle system ou tool injecté par le client."""
@@ -51,7 +55,7 @@ def historique_propre(history: list[dict]) -> list[dict]:
                for m in history if m.get("role") in ("user", "assistant")]
     return propres[-6:]
 
-
+# la fonction public() prépare une source pour le navigateur : pas de chemin disque, une URL d'image à la place
 def public(source: dict) -> dict:
     """Prépare une source pour le navigateur : pas de chemin disque, une URL d'image à la place."""
     s = {k: v for k, v in source.items() if k != "source"}
@@ -63,7 +67,7 @@ def public(source: dict) -> dict:
 def sse(event: str, data: dict) -> str:
     return f"data: {json.dumps({'event': event, **data}, ensure_ascii=False, default=float)}\n\n"
 
-
+# Ici la fonction cause_racine descend dans les ExceptionGroup (anyio/MCP) jusqu'à l'erreur d'origine, pour ne pas afficher une pile de 20 lignes d'ExceptionGroup
 def cause_racine(exc: BaseException) -> BaseException:
     """Descend dans les ExceptionGroup (anyio/MCP) jusqu'à l'erreur d'origine."""
     while isinstance(exc, BaseExceptionGroup) and exc.exceptions:
@@ -78,7 +82,7 @@ def message_erreur(exc: BaseException) -> str:
                 f"(URL attendue : {ag.MCP_URL})")
     return f"{type(racine).__name__}: {racine}"
 
-
+# Asynchronous function to check if the MCP server is reachable
 async def mcp_joignable() -> bool:
     """Vrai si le serveur MCP répond (n'importe quel code HTTP prouve qu'il écoute)."""
     try:
@@ -88,7 +92,7 @@ async def mcp_joignable() -> bool:
     except httpx.HTTPError:
         return False
 
-
+# on a un agent global, construit à la première requête. En cas d'échec (MCP éteint), rien n'est mis en cache
 async def get_agent():
     """Construit l'agent à la première requête. En cas d'échec (MCP éteint), rien n'est mis en cache."""
     global _agent
@@ -98,12 +102,12 @@ async def get_agent():
             _agent = ag.build_agent(tools)
         return _agent
 
-
+# FastAPI endpoints
 @app.get("/")
 def index():
     return FileResponse(ROOT / "static" / "index.html")
 
-
+# check le 
 @app.get("/api/health")
 async def health():
     return {"indexed": await asyncio.to_thread(collection.count), "agent_tools": AGENT_TOOLS,
