@@ -1,3 +1,4 @@
+# Ce fichier contient les fonctions exposées par l'agent pour la recherche et l'analyse de documents
 """Source unique des outils de l'agent.
 
 Ces trois fonctions sont exposées telles quelles par le serveur MCP (mcp_server.py) et
@@ -8,7 +9,7 @@ Ce module reste léger : rag_core est importé à l'appel, pas à l'import. Ains
 le processus de l'agent connaît les noms des outils sans charger CLIP ni la base vectorielle.
 """
 
-
+# alors là on ne peut pas faire mieux que de copier-coller la docstring de rag_core.py, qui est la source unique de vérité pour l'agent
 def rechercher_sources(question: str, k: int = 6, type_resultat: str = "") -> str:
     """Interroge la base vectorielle et renvoie les passages de texte et les images les plus proches
     (id, pdf, page, contenu, similarité), SANS rédiger de réponse. La base est indexée en ANGLAIS :
@@ -16,14 +17,14 @@ def rechercher_sources(question: str, k: int = 6, type_resultat: str = "") -> st
     import rag_core
     return rag_core.outil_rechercher(question, k, type_resultat)
 
-
+# Ici on ne peut pas non plus faire mieux que de copier-coller la docstring de rag_core.py, qui est la source unique de vérité pour l'agent
 def analyser_image(id_image: str, question: str) -> str:
     """Lit une image trouvée par rechercher_sources (schéma, graphique, tableau) et renvoie une
     observation en texte. id_image = champ 'id' d'une source de type image."""
     import rag_core
     return rag_core.outil_analyser_image(id_image, question)
 
-
+# Ici on ne peut pas non plus faire mieux que de copier-coller la docstring de rag_core.py, qui est la source unique de vérité pour l'agent
 def repondre_question(question: str, k: int = 6, type_resultat: str = "") -> str:
     """Pipeline RAG complet : recherche puis réponse rédigée par un modèle, avec ses sources.
     Réservé aux clients MCP externes : l'agent de l'application rédige lui-même sa réponse."""
