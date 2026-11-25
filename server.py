@@ -16,16 +16,18 @@ from pathlib import Path
 from typing import Literal
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 import agent as ag
+import metrics
 import rag_core
 from chemins import resoudre_image
 from retrieval import collection
 
 # variables globales pour le serveur FastAPI : agent, timeout, logger
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("rag.server")
 ROOT = Path(__file__).resolve().parent
 
@@ -114,6 +116,11 @@ async def health():
             "mcp_ok": await mcp_joignable() if AGENT_TOOLS == "mcp" else None}
 
 
+@app.get("/metrics")
+def prometheus():
+    return Response(metrics.exporter(), media_type=metrics.CONTENT_TYPE)
+
+
 @app.get("/api/image")
 def image(id: str):
     """Sert uniquement des images indexées (recherche par id), jamais un chemin libre."""
@@ -132,16 +139,19 @@ async def chat(body: ChatIn):
     if not question:
         raise HTTPException(400, "Question vide")
     queue: asyncio.Queue = asyncio.Queue()
+    suivi = metrics.Suivi()
 
     async def executer():
         if body.mode == "direct":
             res = await asyncio.to_thread(rag_core.repondre, question, body.k)
+            suivi.evenement("sources", res["sources"])
             await queue.put(("sources", {"sources": [public(s) for s in res["sources"]]}))
             await queue.put(("answer", {"text": res["reponse"], "warnings": res["avertissements"]}))
             return
         agent = await get_agent()
 
         def on_step(kind, data):
+            suivi.evenement(kind, data)
             if kind == "sources":
                 queue.put_nowait(("sources", {"sources": [public(s) for s in data]}))
             else:  # "call" | "result" | "usage"
@@ -152,16 +162,20 @@ async def chat(body: ChatIn):
 
     async def work():
         debut, issue = time.perf_counter(), "ok"
+        metrics.EN_COURS.inc()
         try:
             await asyncio.wait_for(executer(), timeout=TIMEOUT_S)
         except TimeoutError:
             issue = "délai dépassé"
+            metrics.ERREURS.labels("TimeoutError").inc()
             await queue.put(("error", {"message": f"Délai dépassé ({TIMEOUT_S:.0f} s). "
                                                   "Réessayez ou simplifiez la question."}))
         except Exception as exc:
             issue = "erreur"
+            metrics.ERREURS.labels(type(cause_racine(exc)).__name__).inc()
             await queue.put(("error", {"message": message_erreur(exc)}))
         finally:
+            metrics.fin_requete(body.mode, issue, time.perf_counter() - debut, suivi.sources)
             log.info("chat mode=%s outils=%s issue=%s durée=%.1fs",
                      body.mode, AGENT_TOOLS, issue, time.perf_counter() - debut)
             await queue.put(None)

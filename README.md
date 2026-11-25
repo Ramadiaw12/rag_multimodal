@@ -310,6 +310,19 @@ SELECT type, pdf, count(*) FROM chunks GROUP BY type, pdf;
 - **Connexions** : `PgVectorStore` ouvre une connexion par opération, ce qui suffit pour une démo. Pour du trafic réel, remplacez-la par un pool (`psycopg_pool`).
 - **Sécurité** : ne publiez pas le port 5432 sur Internet, utilisez un mot de passe fort et ne le versionnez jamais.
 
+### Observabilité
+
+L'application expose ses métriques sur `/metrics` (format Prometheus) : latence des réponses
+par mode, durée de chaque outil, tokens estimés et réels, compression du contexte, erreurs
+par type. Un tableau de bord Grafana est fourni :
+
+```bash
+docker compose -f compose.yaml -f compose.monitoring.yaml up --build
+# Grafana : http://localhost:3000   Prometheus : http://localhost:9090
+```
+
+![Tableau de bord Grafana](docs/grafana.png)
+
 ## Future Improvements
 
 - Integrate a vision-language model for direct image understanding.
