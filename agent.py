@@ -22,7 +22,7 @@ from context import ajuster_au_budget, count_tokens
 
 # ici on définit l'URL du serveur MCP pour que l'agent distant puisse appeler les outils de recherche et d'analyse d'images. On définit également la liste des outils exposés par le serveur MCP, qui sont utilisés par l'agent pour interroger la base vectorielle et analyser les images. Le prompt système décrit le comportement attendu de l'agent, en précisant qu'il doit toujours commencer par rechercher des sources, analyser les images si nécessaire, reformuler la recherche si les résultats sont insuffisants, et rédiger une réponse finale structurée en citant les sources.
 MCP_URL = os.getenv("MCP_URL", "http://127.0.0.1:8000/mcp")
-OUTILS_AGENT = {"rechercher_sources", "analyser_image"}   # repondre_question est volontairement exclu
+from outils import OUTILS, OUTILS_AGENT
 
 SYSTEM_PROMPT = """Tu es un agent de question-réponse documentaire. C'est TOI qui rédiges la réponse finale,
 uniquement à partir de ce que tu trouves dans la base vectorielle.
@@ -47,27 +47,10 @@ def build_llm():
 
 # là la ofnction local_tools() définit les outils du RAG comme des tools LangChain dans le même processus, en important rag_core et en définissant les fonctions rechercher_sources et analyser_image comme des outils accessibles via l'API LangChain.
 def local_tools():
-    """Mode 1 : les outils du RAG sont des tools LangChain dans le même processus."""
-    import rag_core
+    from langchain_core.tools import StructuredTool
+    return [StructuredTool.from_function(f) for f in OUTILS if f.__name__ in OUTILS_AGENT]
 
-    # Un outil LangChain est une fonction annotée avec @tool, qui peut être appelée par l'agent pour effectuer une action spécifique. Ici, on définit deux outils : rechercher_sources pour interroger la base vectorielle et analyser_image pour lire une image et fournir une observation textuelle. Ces outils appellent les fonctions correspondantes dans rag_core, qui contiennent la logique de recherche et d'analyse.
-    @tool
-    def rechercher_sources(question: str, k: int = 6, type_resultat: str = "") -> str:
-        """Interroge la base vectorielle et renvoie les passages de texte et les images les plus proches
-        (id, pdf, page, contenu, similarité), SANS rédiger de réponse. La base est indexée en ANGLAIS :
-        formule la requête en anglais. type_resultat : "texte", "image", ou chaîne vide pour les deux."""
-        return rag_core.outil_rechercher(question, k, type_resultat)
-    
-    # ici le tolls analyzer_image est défini comme un outil LangChain qui lit une image trouvée par rechercher_sources et renvoie une observation en texte. L'ID de l'image est fourni par la source renvoyée par rechercher_sources. Cette fonction appelle la fonction correspondante dans rag_core pour effectuer l'analyse de l'image.
-    @tool
-    def analyser_image(id_image: str, question: str) -> str:
-        """Lit une image trouvée par rechercher_sources (schéma, graphique, tableau) et renvoie une
-        observation en texte. id_image = champ 'id' d'une source de type image."""
-        return rag_core.outil_analyser_image(id_image, question)
 
-    return [rechercher_sources, analyser_image]
-
-# la fonction mcp_tools() définit les outils du RAG comme des tools LangChain accessibles via un serveur MCP distant. Elle utilise le client MultiServerMCPClient pour se connecter au serveur MCP à l'URL spécifiée par la variable d'environnement MCP_URL (par défaut "http://
 async def mcp_tools():
     """Mode 2 : l'agent est séparé du RAG, il ne connaît que l'URL MCP (aucun import de rag_core)."""
     from langchain_mcp_adapters.client import MultiServerMCPClient

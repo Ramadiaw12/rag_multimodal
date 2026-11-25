@@ -139,8 +139,7 @@ main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.1fr) minm
   <div class="brand">RAG multimodal<small id="count"></small></div>
   <div class="seg" id="modes" role="group" aria-label="Mode">
     <button data-mode="direct" title="Une recherche, une génération">Direct</button>
-    <button data-mode="local" title="L’agent décide, outils dans le même processus" aria-pressed="true">Agent</button>
-    <button data-mode="mcp" title="L’agent décide, outils servis par le serveur MCP">Agent via MCP</button>
+    <button data-mode="agent" title="Un agent décide des recherches, lit les figures et rédige la réponse" aria-pressed="true">Agent</button>
   </div>
 </header>
 <main>
@@ -168,7 +167,7 @@ main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.1fr) minm
 <script>
 const $ = s => document.querySelector(s);
 const SUGG = ["What is multi-head attention?", "Que montre le schéma de l’architecture ?", "Compare l’encodeur et le décodeur"];
-let mode = "local", history = [], busy = false, seen = new Map();
+let mode = "agent", history = [], busy = false, seen = new Map();
 
 const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
@@ -311,7 +310,10 @@ $("#evidence").addEventListener("click", e => {
 $("#lightbox").onclick = () => $("#lightbox").classList.remove("on");
 addEventListener("keydown", e => { if (e.key === "Escape") $("#lightbox").classList.remove("on"); });
 
-fetch("/api/health").then(r => r.json()).then(h => $("#count").textContent = h.indexed + " éléments indexés").catch(() => {});
+fetch("/api/health").then(r => r.json()).then(h => {
+  const outils = h.agent_tools === "mcp" ? "outils MCP" + (h.mcp_ok ? "" : " (hors ligne)") : "outils locaux";
+  $("#count").textContent = `${h.indexed} éléments · ${outils}`;
+}).catch(() => {});
 </script>
 </body>
 </html>
