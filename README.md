@@ -399,8 +399,13 @@ Developed as a hands-on exploration of document intelligence, multimodal retriev
 ---
 
 *Building intelligent systems that connect unstructured data, retrieval pipelines, and LLM-powered applications.*
+
 ## 📄 License
 
-This project is licensed under the **Apache License 2.0**.
+Copyright 2026 Ramatoulaye Diawane
 
-See the [LICENSE](./LICENSE) file for details.
+This project is licensed under the Apache License 2.0.
+You are free to use, modify, and distribute this software in accordance
+with the terms of the license.
+
+See the [LICENSE](LICENSE) file for details.

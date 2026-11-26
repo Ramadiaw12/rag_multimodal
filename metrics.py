@@ -1,4 +1,4 @@
-# le fichier montre 
+# le fichier montre  
 """Métriques Prometheus (exposées sur /metrics). Les étiquettes ont peu de valeurs possibles
 (mode, issue, outil, type d'erreur) pour ne pas faire exploser le nombre de séries."""
 import time
@@ -24,7 +24,7 @@ CONTEXTE_OUBLIE = Counter("rag_contexte_echanges_oublies_total", "Échanges d'hi
 
 ISSUES = {"ok": "ok", "erreur": "erreur", "délai dépassé": "delai"}
 
-
+# fonction 
 class Suivi:
     """Transforme les événements de l'agent (call, result, usage, sources) en métriques."""
 
