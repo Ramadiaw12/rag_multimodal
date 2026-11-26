@@ -4,7 +4,7 @@
 **Posez une question à un PDF : un agent lit le texte *et* les figures, puis répond en citant ses sources.**
 
 [![CI](https://github.com/Ramadiaw12/rag_multimodal/actions/workflows/ci.yml/badge.svg)](https://github.com/Ramadiaw12/rag_multimodal/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
 
 | Couche | Technologies |
 |---|---|
