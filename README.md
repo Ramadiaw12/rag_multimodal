@@ -310,18 +310,61 @@ SELECT type, pdf, count(*) FROM chunks GROUP BY type, pdf;
 - **Connexions** : `PgVectorStore` ouvre une connexion par opération, ce qui suffit pour une démo. Pour du trafic réel, remplacez-la par un pool (`psycopg_pool`).
 - **Sécurité** : ne publiez pas le port 5432 sur Internet, utilisez un mot de passe fort et ne le versionnez jamais.
 
-### Observabilité
+## 📊 Observability & Monitoring
 
-L'application expose ses métriques sur `/metrics` (format Prometheus) : latence des réponses
-par mode, durée de chaque outil, tokens estimés et réels, compression du contexte, erreurs
-par type. Un tableau de bord Grafana est fourni :
+To ensure the reliability and performance of the Multimodal RAG system, **Prometheus** and **Grafana** are integrated for monitoring and observability.
+
+The application exposes its operational metrics through a `/metrics` endpoint in Prometheus format. Prometheus collects and stores these metrics, while Grafana provides interactive dashboards to visualize system performance and monitor application behavior.
+
+### 🔍 Monitored Metrics
+
+The monitoring system tracks several aspects of the RAG pipeline:
+
+| Metric | Description |
+|---|---|
+| Response latency | Measures response generation time, broken down by processing mode |
+| Tool execution duration | Tracks the execution time of individual tools |
+| Token usage | Monitors estimated and actual token consumption |
+| Context compression | Tracks context compression before sending information to the LLM |
+| Error tracking | Monitors application errors, categorized by type |
+
+### 🏗️ Monitoring Architecture
+
+The monitoring workflow is organized as follows:
+
+1. **Application (RAG API):** Exposes application metrics through the `/metrics` endpoint.
+2. **Prometheus:** Scrapes the metrics endpoint and stores time-series data.
+3. **Grafana:** Connects to Prometheus and visualizes the collected metrics through dashboards.
+
+### 🚀 Start the Monitoring Stack
+
+Launch the application together with its monitoring services:
 
 ```bash
-docker compose -f compose.yaml -f compose.monitoring.yaml up --build
-# Grafana : http://localhost:3000   Prometheus : http://localhost:9090
+docker compose -f compose.yaml -f compose.monitoring.yaml up --build -d
 ```
 
-![Tableau de bord Grafana](docs/grafana.png)
+Access the monitoring interfaces:
+
+- **Grafana Dashboard:** http://localhost:3000
+- **Prometheus:** http://localhost:9090
+
+### 📈 Grafana Dashboard
+
+The Grafana dashboard provides a centralized view of the application's operational performance, including response latency, tool execution times, token consumption, context compression, and error distribution.
+
+![Grafana Monitoring Dashboard](docs/grafana.png)
+
+### 🎯 Benefits
+
+- Improved visibility into RAG pipeline performance.
+- Identification of latency bottlenecks.
+- Monitoring of LLM token consumption.
+- Detection and analysis of application errors.
+- Better understanding of resource utilization and system behavior.
+
+This observability layer helps make the Multimodal RAG system easier to troubleshoot, evaluate, and operate.
+
 
 ## Future Improvements
 
