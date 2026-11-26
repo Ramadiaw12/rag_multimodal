@@ -11,7 +11,7 @@
   "panels": [
     {
       "id": 1,
-      "title": "Requêtes (1 h)",
+      "title": "Requêtes depuis le démarrage",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -26,7 +26,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(rag_requetes_total[1h]))",
+          "expr": "sum(rag_requetes_total)",
           "legendFormat": "",
           "datasource": {
             "type": "prometheus",
@@ -37,7 +37,7 @@
     },
     {
       "id": 2,
-      "title": "Taux d'erreur (1 h)",
+      "title": "Taux d'échec depuis le démarrage",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -52,7 +52,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(rag_requetes_total{issue!=\"ok\"}[1h])) / clamp_min(sum(increase(rag_requetes_total[1h])), 1)",
+          "expr": "sum(rag_requetes_total{issue!=\"ok\"}) / (sum(rag_requetes_total) > 0)",
           "legendFormat": "",
           "datasource": {
             "type": "prometheus",
@@ -62,7 +62,8 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "percentunit"
+          "unit": "percentunit",
+          "noValue": "Aucune requête"
         },
         "overrides": []
       }
