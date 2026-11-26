@@ -19,8 +19,7 @@ services:
       - "8081:8080"
     env_file: .env
     environment:
-      MCP_URL: http://mcp:8000/mcp   # remplace la valeur de .env (127.0.0.1 ne marche pas entre conteneurs)
-      AGENT_TOOLS: mcp
+      MCP_URL: http://mcp:8000/mcp   # remplace 
       AGENT_TOOLS: mcp
     volumes:
       - ./data:/data
