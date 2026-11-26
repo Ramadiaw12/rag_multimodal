@@ -115,7 +115,7 @@ async def health():
     return {"indexed": await asyncio.to_thread(collection.count), "agent_tools": AGENT_TOOLS,
             "mcp_ok": await mcp_joignable() if AGENT_TOOLS == "mcp" else None}
 
-
+# fonction for 
 @app.get("/metrics")
 def prometheus():
     return Response(metrics.exporter(), media_type=metrics.CONTENT_TYPE)

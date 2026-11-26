@@ -60,3 +60,15 @@ def fin_requete(mode: str, issue: str, duree: float, nb_sources: int) -> None:
 
 def exporter() -> bytes:
     return generate_latest()
+
+# Séries créées au démarrage : sans cela, un compteur à étiquettes n'existe qu'après son premier
+# incrément, et rate()/increase() ne renvoient rien tant qu'il n'y a pas deux relevés différents.
+for _mode in ("direct", "agent"):
+    DUREE.labels(_mode)
+    for _issue in ("ok", "erreur", "delai"):
+        REQUETES.labels(_mode, _issue)
+for _outil in ("rechercher_sources", "analyser_image"):
+    OUTIL_APPELS.labels(_outil)
+    OUTIL_DUREE.labels(_outil)
+for _type in ("estime", "reel_entree", "reel_sortie"):
+    TOKENS.labels(_type)
