@@ -208,97 +208,39 @@ rag_core.py / agent.py / server.py
 
 `vectorstore.py` est la seule couche qui connaît la base. Les deux backends renvoient leurs résultats au **même format** (`ids`, `documents`, `metadatas`, `distances`), avec la même distance cosinus, donc `recuperer_sources` fonctionne sans modification. Un test vérifie que les deux backends renvoient les mêmes voisins sur les mêmes données (`tests/test_vectorstore.py`).
 
-### Mise en route
+## Adapter le projet à PostgreSQL + pgvector (guide)
 
-**1. Démarrer PostgreSQL avec pgvector**
+Le projet utilise **ChromaDB**. Si vous avez déjà PostgreSQL, vous pouvez le remplacer par
+[pgvector](https://github.com/pgvector/pgvector). Cette adaptation n'est pas incluse dans le
+dépôt : voici ce qu'elle demande.
 
-```bash
-docker run -d --name pgvector \
-  -e POSTGRES_USER=rag -e POSTGRES_PASSWORD=rag -e POSTGRES_DB=rag \
-  -p 127.0.0.1:5432:5432 pgvector/pgvector:pg16
-```
+**Ce qui change** : seul `retrieval.py` parle à la base. Il suffit de remplacer
+`collection.query(...)` par une requête SQL qui renvoie le même format
+(`ids`, `documents`, `metadatas`, `distances`). Le reste du projet ne change pas, sauf les deux
+endroits qui lisent `collection` directement (`rag_core.py` et `server.py`).
 
-Le mot de passe `rag` convient pour un essai local ; changez-le avant toute exposition.
-
-**2. Installer les dépendances**
-
-```bash
-uv add "psycopg[binary]" pgvector
-```
-
-**3. Configurer l'environnement** (fichier `.env`)
-
-```
-VECTOR_BACKEND=pgvector
-DATABASE_URL=postgresql://rag:rag@localhost:5432/rag
-```
-
-Au premier démarrage, le projet crée lui-même l'extension `vector`, la table et les index.
-
-**4. Charger vos données**, de l'une des deux façons :
-
-- **Migrer l'index ChromaDB existant**, sans recalculer les embeddings :
-  ```bash
-  uv run python migrate_chroma_to_pgvector.py
-  ```
-  Le script affiche le nombre d'éléments des deux bases et s'arrête si elles diffèrent.
-- **Écrire depuis votre propre ingestion** :
-  ```python
-  from vectorstore import PgVectorStore
-
-  store = PgVectorStore()
-  store.add(
-      ids=["doc-p1-0"],
-      embeddings=[vecteur_clip_512],   # liste de 512 floats, normalisée
-      documents=["texte du passage"],
-      metadatas=[{"type": "texte", "pdf": "doc.pdf", "page": 1, "source": ""}],
-  )
-  ```
-  Pour une image, mettez `"type": "image"` et `"source"` avec le chemin du fichier.
-
-**5. Lancer l'application** comme d'habitude :
-
-```bash
-uv run uvicorn server:app --port 8080
-```
-
-### Avec Docker Compose
-
-```bash
-docker compose -f docker-compose.yaml -f compose.pgvector.yaml up --build
-```
-
-La surcouche ajoute un service `db` et configure `web` et `mcp` pour l'utiliser. Les images extraites restent à fournir dans `./data/images` : seul l'index passe dans PostgreSQL.
-
-### Ce que le projet crée dans PostgreSQL
+**Schéma** (CLIP ViT-B-32 produit des vecteurs de dimension 512) :
 
 ```sql
+CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE chunks (
     id        TEXT PRIMARY KEY,
-    type      TEXT NOT NULL,             -- 'texte' ou 'image'
+    type      TEXT NOT NULL,       -- 'texte' ou 'image'
     pdf       TEXT,
     page      INTEGER,
-    source    TEXT,                      -- chemin de l'image
+    source    TEXT,                -- chemin de l'image
     document  TEXT,
     embedding vector(512) NOT NULL
 );
 CREATE INDEX ON chunks USING hnsw (embedding vector_cosine_ops);
 ```
 
-Une recherche est une requête SQL ordinaire. L'opérateur `<=>` est la distance cosinus :
+**Recherche** : l'opérateur `<=>` est la distance cosinus, donc `1 - distance` donne la même
+similarité que ChromaDB :
 
 ```sql
-SELECT pdf, page, 1 - (embedding <=> :requete) AS similarite
-FROM chunks
-WHERE type = 'texte'
-ORDER BY embedding <=> :requete
-LIMIT 5;
-```
-
-Pour inspecter l'index :
-
-```sql
-SELECT type, pdf, count(*) FROM chunks GROUP BY type, pdf;
+SELECT id, document, type, pdf, page, source, embedding <=> %s AS distance
+FROM chunks WHERE type = %s ORDER BY embedding <=> %s LIMIT %s;
 ```
 
 ### Points d'attention
@@ -335,9 +277,9 @@ The monitoring workflow is organized as follows:
 2. **Prometheus:** Scrapes the metrics endpoint and stores time-series data.
 3. **Grafana:** Connects to Prometheus and visualizes the collected metrics through dashboards.
 
-### 🚀 Start the Monitoring Stack
+## 🚀 Start the Monitoring Stack
 
-## Lancer avec Docker
+### Lancer avec Docker
 
 ```bash
 cp .env.example .env     # puis renseignez GROQ_API_KEY
