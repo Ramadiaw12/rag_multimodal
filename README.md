@@ -149,7 +149,7 @@ Exemples de questions : *« What is multi-head attention? »*, *« Que montre le
 ├── chroma_pdf/           # Base vectorielle persistante
 ├── resultats_pdf/        # Textes et images extraits des PDF
 ├── Dockerfile            # Image de l'application
-├── compose.yaml          # Deux services : web et serveur MCP
+├── docker-compose.yaml          # Deux services : web et serveur MCP
 ├── .github/workflows/
 │   └── ci.yml            # CI : lint, tests, build de l'image
 ├── pyproject.toml / uv.lock
@@ -266,7 +266,7 @@ uv run uvicorn server:app --port 8080
 ### Avec Docker Compose
 
 ```bash
-docker compose -f compose.yaml -f compose.pgvector.yaml up --build
+docker compose -f docker-compose.yaml -f compose.pgvector.yaml up --build
 ```
 
 La surcouche ajoute un service `db` et configure `web` et `mcp` pour l'utiliser. Les images extraites restent à fournir dans `./data/images` : seul l'index passe dans PostgreSQL.
@@ -338,22 +338,59 @@ The monitoring workflow is organized as follows:
 
 ### 🚀 Start the Monitoring Stack
 
-Launch the application together with its monitoring services:
+## Lancer avec Docker
 
 ```bash
-docker compose -f docker-compose.yaml -f compose.monitoring.yaml up --build -d
+cp .env.example .env     # puis renseignez GROQ_API_KEY
+docker compose up -d --build
 ```
 
-Access the monitoring interfaces:
+Pour ajouter la supervision (Prometheus et Grafana) :
 
-- **Grafana Dashboard:** http://localhost:3000
-- **Prometheus:** http://localhost:9090
+```bash
+docker compose -f docker-compose.yaml -f compose.monitoring.yaml up -d --build
+```
+
+| Service | Adresse | Rôle |
+|---|---|---|
+| Application | http://localhost:8081 | Interface de conversation |
+| Grafana | http://localhost:3000 | Tableau de bord d'exploitation |
+| Prometheus | http://localhost:9090 | Collecte des métriques |
+
+Les données (index ChromaDB et images extraites) sont montées depuis `./data`
+(`./data/chroma_pdf` et `./data/images`) : elles ne sont pas dans l'image Docker.
+
+## Observabilité
+
+L'application expose ses métriques sur `/metrics` (format Prometheus) : latence des
+réponses par mode, durée de chaque outil, tokens estimés et réels, compression du
+contexte, erreurs par type. Grafana affiche un tableau de bord prêt à l'emploi.
+
+L'observabilité a deux niveaux. L'utilisateur voit la **trace de l'agent** et le
+volume de contexte envoyé au LLM à chaque étape. L'exploitant voit les **métriques
+agrégées** dans Grafana, qui reste une interface séparée de l'application.
 
 ### 📈 Grafana Dashboard
 
 The Grafana dashboard provides a centralized view of the application's operational performance, including response latency, tool execution times, token consumption, context compression, and error distribution.
 
 ![Grafana Monitoring Dashboard](images/monitoring.png)
+
+## Dépannage
+
+| Symptôme | Cause et solution |
+|---|---|
+| Grafana n'affiche aucune donnée | Vous interrogez probablement un autre serveur que le conteneur (par exemple un `uvicorn` lancé à la main). Vérifiez avec `ss -ltnp \| grep :8080` : ne lancez pas `uvicorn` en même temps que Docker |
+| Erreur `NotFoundError` dans la réponse | Un nom de modèle Groq n'est plus disponible pour votre clé. Comparez les modèles de `.env` avec la liste de `https://api.groq.com/openai/v1/models` |
+| « Serveur MCP injoignable » | Le service `mcp` n'est pas démarré. Avec Docker : `docker compose ps`. En local : `uv run python mcp_server.py` |
+| Le `.env` modifié n'a aucun effet | Les conteneurs lisent `.env` à leur création : `docker compose up -d --force-recreate` |## Dépannage
+
+| Symptôme | Cause et solution |
+|---|---|
+| Grafana n'affiche aucune donnée | Vous interrogez probablement un autre serveur que le conteneur (par exemple un `uvicorn` lancé à la main). Vérifiez avec `ss -ltnp \| grep :8080` : ne lancez pas `uvicorn` en même temps que Docker |
+| Erreur `NotFoundError` dans la réponse | Un nom de modèle Groq n'est plus disponible pour votre clé. Comparez les modèles de `.env` avec la liste de `https://api.groq.com/openai/v1/models` |
+| « Serveur MCP injoignable » | Le service `mcp` n'est pas démarré. Avec Docker : `docker compose ps`. En local : `uv run python mcp_server.py` |
+| Le `.env` modifié n'a aucun effet | Les conteneurs lisent `.env` à leur création : `docker compose up -d --force-recreate` |
 
 ### 🎯 Benefits
 
