@@ -341,7 +341,7 @@ The monitoring workflow is organized as follows:
 Launch the application together with its monitoring services:
 
 ```bash
-docker compose -f compose.yaml -f compose.monitoring.yaml up --build -d
+docker compose -f docker-compose.yaml -f compose.monitoring.yaml up --build -d
 ```
 
 Access the monitoring interfaces:
