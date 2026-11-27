@@ -134,24 +134,23 @@ Exemples de questions : *« What is multi-head attention? »*, *« Que montre le
 ## Structure du projet
 
 ```
-├── server.py             # Backend FastAPI : API de chat en streaming (SSE), service des images
-├── static/
-│   └── index.html        # Interface web (conversation, trace de l'agent, planche de preuves)
-├── agent.py              # Agent LangGraph ReAct (mind / body) et outils
-├── context.py            # Ingénierie de contexte : filtrage, compression, fenêtre, budget de tokens
-├── mcp_server.py         # Serveur MCP exposant le retriever
-├── rag_core.py           # Recherche, génération, outils partagés
-├── retrieval.py          # CLIP + ChromaDB : encodage et requête
-├── chemins.py            # Résolution des chemins d'images (indépendante de la machine)
-├── rag_multimodal.ipynb  # Ingestion et expérimentations
-├── tests/                # Tests unitaires (contexte, chemins)
-├── pdfs/                 # Documents sources
-├── chroma_pdf/           # Base vectorielle persistante
-├── resultats_pdf/        # Textes et images extraits des PDF
-├── Dockerfile            # Image de l'application
-├── docker-compose.yaml          # Deux services : web et serveur MCP
-├── .github/workflows/
-│   └── ci.yml            # CI : lint, tests, build de l'image
+├── server.py                 # Backend FastAPI : API de chat en streaming (SSE)
+├── static/index.html         # Interface web : conversation, trace de l'agent, preuves
+├── agent.py                  # Agent LangGraph ReAct (mind / body)
+├── outils.py                 # Outils de l'agent, définis une seule fois
+├── mcp_server.py             # Serveur MCP exposant ces outils
+├── rag_core.py               # Recherche, génération, outils partagés
+├── retrieval.py              # CLIP + ChromaDB : encodage et requête
+├── context.py                # Filtrage, compression, fenêtre, budget de tokens
+├── metrics.py                # Métriques Prometheus
+├── chemins.py                # Résolution des chemins d'images
+├── rag_multimodal.ipynb      # Ingestion et expérimentations
+├── tests/                    # Tests unitaires
+├── observability/            # Configuration Prometheus et Grafana
+├── Dockerfile
+├── docker-compose.yaml       # Application et serveur MCP
+├── compose.monitoring.yaml   # Prometheus et Grafana
+├── .github/workflows/        # CI et CD
 ├── pyproject.toml / uv.lock
 └── .env.example
 ```
