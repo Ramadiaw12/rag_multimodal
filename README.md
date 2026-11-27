@@ -353,7 +353,7 @@ Access the monitoring interfaces:
 
 The Grafana dashboard provides a centralized view of the application's operational performance, including response latency, tool execution times, token consumption, context compression, and error distribution.
 
-![Grafana Monitoring Dashboard](docs/grafana.png)
+![Grafana Monitoring Dashboard](images/monitoring.png)
 
 ### 🎯 Benefits
 
